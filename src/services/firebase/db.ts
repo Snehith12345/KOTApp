@@ -1,0 +1,87 @@
+import { collection, addDoc, updateDoc, doc, setDoc, serverTimestamp, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { db } from './config';
+import { Table } from '../../types/table.types';
+import { MenuCategory, MenuItem } from '../../types/menu.types';
+import { Order } from '../../types/order.types';
+
+export const DBServices = {
+  async addTable(tableNo: number): Promise<void> {
+    const tableRef = doc(collection(db, 'tables'));
+    await setDoc(tableRef, {
+      id: tableRef.id,
+      tableNo,
+      status: 'available'
+    });
+  },
+
+  async updateTableStatus(id: string, status: Table['status']): Promise<void> {
+    const tableRef = doc(db, 'tables', id);
+    await updateDoc(tableRef, { status });
+  },
+
+  async updateTableStatusByNo(tableNo: number, status: Table['status']): Promise<void> {
+    const q = query(collection(db, 'tables'), where('tableNo', '==', tableNo));
+    const snapshot = await getDocs(q);
+    snapshot.forEach((document) => {
+      updateDoc(doc(db, 'tables', document.id), { status });
+    });
+  },
+
+  async addMenuCategory(name: string): Promise<void> {
+    const categoryRef = doc(collection(db, 'menuCategories'));
+    await setDoc(categoryRef, {
+      id: categoryRef.id,
+      name
+    });
+  },
+
+  async addMenuItem(item: Omit<MenuItem, 'id'>): Promise<void> {
+    const itemRef = doc(collection(db, 'menuItems'));
+    await setDoc(itemRef, {
+      ...item,
+      id: itemRef.id
+    });
+  },
+
+  async createOrder(orderData: Omit<Order, 'id'>): Promise<void> {
+    const orderRef = doc(collection(db, 'orders'));
+    await setDoc(orderRef, {
+      ...orderData,
+      id: orderRef.id,
+      createdAt: serverTimestamp(),
+    });
+  },
+
+  async updateOrderStatus(id: string, status: Order['status']): Promise<void> {
+    const orderRef = doc(db, 'orders', id);
+    await updateDoc(orderRef, { status });
+  },
+
+  async deleteTable(id: string): Promise<void> {
+    await deleteDoc(doc(db, 'tables', id));
+  },
+
+  async deleteMenuCategory(id: string): Promise<void> {
+    // Cascading delete: First find all items with this categoryId
+    const q = query(collection(db, 'menuItems'), where('categoryId', '==', id));
+    const snapshot = await getDocs(q);
+    
+    // Delete all matching items
+    const deletePromises = snapshot.docs.map(document => 
+      deleteDoc(doc(db, 'menuItems', document.id))
+    );
+    await Promise.all(deletePromises);
+
+    // Then delete the category itself
+    await deleteDoc(doc(db, 'menuCategories', id));
+  },
+
+  async deleteMenuItem(id: string): Promise<void> {
+    await deleteDoc(doc(db, 'menuItems', id));
+  },
+
+  async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<void> {
+    const itemRef = doc(db, 'menuItems', id);
+    await updateDoc(itemRef, updates);
+  }
+};

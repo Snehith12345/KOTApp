@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "KOTApp",
+    "name": "Vasudha",
     "slug": "KOTApp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,10 +21,16 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.snehithreddy1949.vasudha"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "acb89d2b-42ec-4ea5-8150-0a6cade4a857"
+      }
     }
   }
 }
