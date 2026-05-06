@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -106,8 +106,8 @@ export const MenuManagementScreen = () => {
     );
   };
 
-  const renderItem = ({ item }: { item: MenuItem }) => (
-    <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
+  const renderItem = useCallback(({ item }: { item: MenuItem }) => (
+    <View className="flex-row justify-between items-center bg-white p-4 mb-2 rounded-xl border border-gray-100 shadow-sm mx-4">
       <View>
         <Text className="font-bold text-gray-800 text-base">{item.name}</Text>
         <Text className="text-gray-500">₹{Number(item.price || 0).toFixed(2)}</Text>
@@ -116,26 +116,28 @@ export const MenuManagementScreen = () => {
         <TouchableOpacity 
           className="p-2 bg-blue-50 rounded-full"
           onPress={() => openEditModal(item)}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         >
           <Pencil size={20} color="#2563EB" />
         </TouchableOpacity>
         <TouchableOpacity 
           className="p-2 bg-red-50 rounded-full"
           onPress={() => handleDeleteItem(item.id)}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         >
           <Trash2 size={20} color="#DC2626" />
         </TouchableOpacity>
       </View>
     </View>
-  );
+  ), []);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <ArrowLeft size={24} color="#000" />
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
+          <ArrowLeft size={24} color="#000" />
+        </TouchableOpacity>
           <Text className="text-xl font-bold ml-4">Manage Menu</Text>
         </View>
         <View className="flex-row">

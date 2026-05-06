@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, ArrowLeft } from 'lucide-react-native';
@@ -19,14 +19,16 @@ export const RunningOrdersScreen = () => {
   const handleCompleteOrder = (orderId: string, tableNo: number) => {
     Alert.alert(
       'Complete Order',
-      `Complete Order for Table ${tableNo}?`,
+      `Complete Order for ${tableNo === 0 ? 'Pick Up' : `Table ${tableNo}`}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Complete', 
           onPress: async () => {
             await DBServices.updateOrderStatus(orderId, 'completed');
-            await DBServices.updateTableStatusByNo(tableNo, 'available');
+            if (tableNo !== 0) {
+              await DBServices.updateTableStatusByNo(tableNo, 'available');
+            }
           }
         }
       ]
@@ -36,7 +38,7 @@ export const RunningOrdersScreen = () => {
   const handleCancelOrder = (orderId: string, tableNo: number) => {
     Alert.alert(
       'Cancel Order',
-      `Cancel Order for Table ${tableNo}?`,
+      `Cancel Order for ${tableNo === 0 ? 'Pick Up' : `Table ${tableNo}`}?`,
       [
         { text: 'No', style: 'cancel' },
         { 
@@ -44,31 +46,34 @@ export const RunningOrdersScreen = () => {
           style: 'destructive',
           onPress: async () => {
             await DBServices.updateOrderStatus(orderId, 'cancelled');
-            await DBServices.updateTableStatusByNo(tableNo, 'available');
+            if (tableNo !== 0) {
+              await DBServices.updateTableStatusByNo(tableNo, 'available');
+            }
           }
         }
       ]
     );
   };
 
-  const renderItem = ({ item }: { item: Order }) => {
-    // Format timestamp nicely if it exists
-    let timeString = '';
-    if (item.createdAt && typeof item.createdAt === 'object') {
-      const date = new Date((item.createdAt as any).seconds * 1000);
-      timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
+  const renderItem = useCallback(({ item }: { item: Order }) => {
     return (
       <View className="bg-white m-4 rounded-xl border border-gray-200 shadow-sm p-4">
-        <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-xl font-bold text-orange-500">KOT - {item.kotNo}</Text>
-          <Text className="text-xl font-bold text-orange-500">Table {item.tableNo}</Text>
+        <View className="flex-row justify-between items-center mb-3 border-b border-gray-100 pb-3">
+          <View className="flex-row items-center gap-2">
+            <View className={`px-3 py-1 rounded-full ${item.tableNo === 0 ? 'bg-purple-100' : 'bg-orange-100'}`}>
+              <Text className={`font-bold ${item.tableNo === 0 ? 'text-purple-600' : 'text-orange-600'}`}>
+                {item.tableNo === 0 ? 'Pick Up' : `Table ${item.tableNo}`}
+              </Text>
+            </View>
+            <Text className="text-gray-500 font-medium">#{item.kotNo}</Text>
+          </View>
+          <Text className="text-xs text-gray-400">
+            {item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+          </Text>
         </View>
-        
+
         <View className="flex-row justify-between mb-4">
           <Text className="text-gray-600">{item.captainName}</Text>
-          <Text className="text-gray-500">{timeString}</Text>
           <Text className="text-gray-600">{item.items?.length || 0} items</Text>
         </View>
 
@@ -80,8 +85,8 @@ export const RunningOrdersScreen = () => {
             <Text className="text-white font-bold text-sm">Complete</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            className="flex-1 py-3 items-center bg-gray-200 rounded-lg"
-            onPress={() => navigation.navigate(Routes.MENU, { tableNo: item.tableNo })}
+            className="flex-1 py-3 items-center bg-purple-100 rounded-lg"
+            onPress={() => navigation.navigate(Routes.MENU, { tableNo: item.tableNo, orderId: item.id })}
           >
             <Text className="text-[#5D3FD3] font-bold text-sm">Add Item</Text>
           </TouchableOpacity>
@@ -94,13 +99,13 @@ export const RunningOrdersScreen = () => {
         </View>
       </View>
     );
-  };
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <View className="flex-row items-center justify-between px-4 py-3 bg-white border-b border-gray-100">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
             <ArrowLeft size={24} color="#000" />
           </TouchableOpacity>
           <Text className="text-xl font-bold ml-4">Running Orders</Text>

@@ -15,6 +15,7 @@ export interface Order {
   captainId: string;
   captainName: string;
   status: 'running' | 'completed' | 'cancelled';
+  orderType?: 'dine-in' | 'pickup';
   createdAt: any;
   items: OrderItem[];
   specialNote?: string;

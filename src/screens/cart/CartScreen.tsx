@@ -15,7 +15,7 @@ import { DBServices } from '../../services/firebase/db';
 export const CartScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const tableNo = route.params?.tableNo || 14;
+  const tableNo = route.params?.tableNo ?? 14;
   
   const cartItems = useCartStore(state => state.carts[tableNo]) || [];
   const { clearCart } = useCartStore();
@@ -24,6 +24,7 @@ export const CartScreen = () => {
   const [specialNote, setSpecialNote] = useState('');
   const [isPrinting, setIsPrinting] = useState(false);
   const [previewKotNo] = useState(() => Math.floor(Math.random() * 100) + 1);
+  const isPickup = tableNo === 0;
 
   const cartTotal = cartItems && Array.isArray(cartItems) 
     ? cartItems.reduce((sum, item) => sum + ((Number(item?.price) || 0) * (Number(item?.qty) || 0)), 0)
@@ -40,6 +41,7 @@ export const CartScreen = () => {
       await DBServices.createOrder({
         kotNo,
         tableNo,
+        orderType: isPickup ? 'pickup' : 'dine-in',
         captainId: user?.id || 'unknown',
         captainName: user?.name || 'Unknown',
         status: 'running',
@@ -49,7 +51,9 @@ export const CartScreen = () => {
         createdAt: 0 // serverTimestamp handles this inside DBServices
       });
 
-      await DBServices.updateTableStatusByNo(tableNo, 'running');
+      if (!isPickup) {
+        await DBServices.updateTableStatusByNo(tableNo, 'running');
+      }
 
       // Connect to printer (Mocked in Web, Real in App)
       await printerService.connect(settings.ipAddress, settings.port);
@@ -89,7 +93,7 @@ export const CartScreen = () => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
           <ArrowLeft size={24} color="#000" />
         </TouchableOpacity>
         <Text className="text-xl font-bold ml-4">KOT Preview</Text>
@@ -109,10 +113,10 @@ export const CartScreen = () => {
 
         <View className="flex-row justify-between items-center mb-6 border-b border-gray-100 pb-4">
           <View>
-            <Text className="text-gray-500 text-sm">Table No.</Text>
-            <Text className="text-2xl font-bold">{tableNo}</Text>
+            <Text className="text-gray-500 text-sm">{isPickup ? 'Order Type' : 'Table No.'}</Text>
+            <Text className="text-2xl font-bold">{isPickup ? 'Pick Up' : tableNo}</Text>
           </View>
-          <Text className="text-[#5D3FD3] font-bold text-lg">Dine In</Text>
+          {!isPickup && <Text className="text-[#5D3FD3] font-bold text-lg">Dine In</Text>}
         </View>
 
         <View className="mb-4 flex-row items-center justify-between border-b border-gray-100 pb-4">

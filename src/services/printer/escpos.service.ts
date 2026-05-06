@@ -25,7 +25,11 @@ export class ESCPOSService {
     buffer.push(...this.NORMAL_SIZE);
     
     buffer.push(...this.BOLD_ON);
-    buffer.push(...this.stringToBytes(`Table No: ${tableNo}\n`));
+    if (tableNo === 0) {
+      buffer.push(...this.stringToBytes(`*** PICK UP ***\n`));
+    } else {
+      buffer.push(...this.stringToBytes(`Table No: ${tableNo}\n`));
+    }
     buffer.push(...this.BOLD_OFF);
 
     buffer.push(...this.stringToBytes('--------------------------------\n'));

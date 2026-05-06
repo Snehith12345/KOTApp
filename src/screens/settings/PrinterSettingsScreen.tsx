@@ -52,7 +52,7 @@ export const PrinterSettingsScreen = () => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center px-4 py-3 border-b border-gray-100">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
           <ArrowLeft size={24} color="#000" />
         </TouchableOpacity>
         <Text className="text-xl font-bold ml-4">Printer Settings</Text>

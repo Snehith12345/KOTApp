@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -75,7 +75,7 @@ export const TablesScreen = () => {
     );
   };
 
-  const renderTable = ({ item }: { item: Table }) => (
+  const renderTable = useCallback(({ item }: { item: Table }) => (
     <TouchableOpacity 
       className={`w-[30%] aspect-square m-[1.5%] rounded-xl border-2 items-center justify-center ${getStatusColor(item.status)} ${getStatusBg(item.status)}`}
       onPress={() => {
@@ -86,7 +86,7 @@ export const TablesScreen = () => {
       <Text className={`text-2xl font-bold ${getStatusColor(item.status).split(' ')[1]}`}>{item.tableNo}</Text>
       <Text className={`text-xs mt-1 ${getStatusColor(item.status).split(' ')[1]}`}>{item.status}</Text>
     </TouchableOpacity>
-  );
+  ), []);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -107,6 +107,13 @@ export const TablesScreen = () => {
       </View>
 
       <View className="p-4">
+        <TouchableOpacity 
+          className="bg-[#5D3FD3] rounded-lg px-4 py-4 mb-4 flex-row items-center justify-center shadow-sm"
+          onPress={() => navigation.navigate(Routes.MENU, { tableId: '0', tableNo: 0 })}
+        >
+          <Text className="text-white font-bold text-lg">🛍️ New Pick Up Order</Text>
+        </TouchableOpacity>
+
         <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2 mb-4">
           <Search size={20} color="#666" />
           <TextInput 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import { DBServices } from '../../services/firebase/db';
 export const MenuScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const tableNo = route.params?.tableNo || 14;
+  const tableNo = route.params?.tableNo ?? 14;
   
   const categories = useMenuStore(state => state.categories);
   const items = useMenuStore(state => state.items);
@@ -32,27 +32,35 @@ export const MenuScreen = () => {
     return () => unsubscribe();
   }, []);
 
-  const getCartQty = (itemId: string) => {
+  const getCartQty = useCallback((itemId: string) => {
     const item = cartItems.find(i => i.itemId === itemId);
     return item ? item.qty : 0;
-  };
+  }, [cartItems]);
 
   const handleIncrement = async (item: MenuItem) => {
-    addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price });
-    if (cartItems.length === 0) {
-      await DBServices.updateTableStatusByNo(tableNo, 'running');
+    try {
+      addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price });
+      if (cartItems.length === 0 && tableNo !== 0) {
+        await DBServices.updateTableStatusByNo(tableNo, 'running');
+      }
+    } catch (error) {
+      console.warn("Failed to increment item", error);
     }
   };
 
   const handleDecrement = async (item: MenuItem) => {
-    const qty = getCartQty(item.id);
-    if (qty > 1) {
-      updateQuantity(tableNo, item.id, qty - 1);
-    } else if (qty === 1) {
-      removeItem(tableNo, item.id);
-      if (cartItems.length === 1) {
-        await DBServices.updateTableStatusByNo(tableNo, 'available');
+    try {
+      const qty = getCartQty(item.id);
+      if (qty > 1) {
+        updateQuantity(tableNo, item.id, qty - 1);
+      } else if (qty === 1) {
+        removeItem(tableNo, item.id);
+        if (cartItems.length === 1 && tableNo !== 0) {
+          await DBServices.updateTableStatusByNo(tableNo, 'available');
+        }
       }
+    } catch (error) {
+      console.warn("Failed to decrement item", error);
     }
   };
 
@@ -64,7 +72,7 @@ export const MenuScreen = () => {
     ? cartItems.reduce((sum, item) => sum + (Number(item?.qty) || 0), 0)
     : 0;
 
-  const renderItem = ({ item }: { item: MenuItem }) => {
+  const renderItem = useCallback(({ item }: { item: MenuItem }) => {
     if (!item) return null;
     const qty = getCartQty(item.id);
     const itemPrice = Number(item.price) || 0;
@@ -84,6 +92,7 @@ export const MenuScreen = () => {
           <TouchableOpacity 
             className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm"
             onPress={() => handleDecrement(item)}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
             <Text className="text-xl text-gray-600">-</Text>
           </TouchableOpacity>
@@ -91,22 +100,25 @@ export const MenuScreen = () => {
           <TouchableOpacity 
             className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm"
             onPress={() => handleIncrement(item)}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
             <Text className="text-xl text-white">+</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
-  };
+  }, [cartItems, tableNo, getCartQty]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
             <ArrowLeft size={24} color="#000" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold ml-4">Menu (Table {tableNo})</Text>
+          <Text className="text-xl font-bold ml-4">
+            {tableNo === 0 ? 'Pick Up Order' : `Menu (Table ${tableNo})`}
+          </Text>
         </View>
       </View>
 
