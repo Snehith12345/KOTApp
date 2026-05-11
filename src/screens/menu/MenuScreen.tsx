@@ -40,9 +40,6 @@ export const MenuScreen = () => {
   const handleIncrement = async (item: MenuItem) => {
     try {
       addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price });
-      if (cartItems.length === 0 && tableNo !== 0) {
-        await DBServices.updateTableStatusByNo(tableNo, 'running');
-      }
     } catch (error) {
       console.warn("Failed to increment item", error);
     }
@@ -55,9 +52,6 @@ export const MenuScreen = () => {
         updateQuantity(tableNo, item.id, qty - 1);
       } else if (qty === 1) {
         removeItem(tableNo, item.id);
-        if (cartItems.length === 1 && tableNo !== 0) {
-          await DBServices.updateTableStatusByNo(tableNo, 'available');
-        }
       }
     } catch (error) {
       console.warn("Failed to decrement item", error);

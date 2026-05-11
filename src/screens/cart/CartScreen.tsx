@@ -68,20 +68,30 @@ export const CartScreen = () => {
 
       // 2. Printer Task
       const printTask = async () => {
-        await printerService.connect(settings.ipAddress, settings.port);
-        await printerService.print(buffer);
-        printerService.disconnect();
+        try {
+          await printerService.connect(settings.ipAddress, settings.port);
+          await printerService.print(buffer);
+          printerService.disconnect();
+          return "SUCCESS";
+        } catch (e) {
+          console.warn("Printer failed:", e);
+          return "FAILED";
+        }
       };
 
       // Execute both simultaneously! The printer will start instantly over LAN while Firebase saves over the internet.
-      await Promise.all([saveToDbTask(), printTask()]);
+      const [dbResult, printResult] = await Promise.all([saveToDbTask(), printTask()]);
       
+      if (printResult === "FAILED") {
+        alert('KOT Saved to Cloud, but Printer is offline. Please check connection!');
+      } else {
+        alert('KOT Saved & Printed!');
+      }
       
-      alert('KOT Saved & Printed!');
       clearCart(tableNo);
       navigation.navigate(Routes.ORDERS);
     } catch (error: any) {
-      alert(`Print Failed: ${error.message}`);
+      alert(`Error saving KOT: ${error.message}`);
     } finally {
       setIsPrinting(false);
     }
