@@ -35,29 +35,9 @@ export const CartScreen = () => {
     if (cartItems.length === 0) return;
     setIsPrinting(true);
     try {
-      const kotNo = previewKotNo; // Use the preview number
+      const kotNo = previewKotNo;
 
-      // Save to Firestore
-      await DBServices.createOrder({
-        kotNo,
-        tableNo,
-        orderType: isPickup ? 'pickup' : 'dine-in',
-        captainId: user?.id || 'unknown',
-        captainName: user?.name || 'Unknown',
-        status: 'running',
-        items: cartItems,
-        specialNote,
-        totalAmount: cartTotal,
-        createdAt: 0 // serverTimestamp handles this inside DBServices
-      });
-
-      if (!isPickup) {
-        await DBServices.updateTableStatusByNo(tableNo, 'running');
-      }
-
-      // Connect to printer (Mocked in Web, Real in App)
-      await printerService.connect(settings.ipAddress, settings.port);
-      
+      // Build printer buffer instantly
       const buffer = ESCPOSService.buildKOT(
         kotNo,
         tableNo,
@@ -66,8 +46,36 @@ export const CartScreen = () => {
         specialNote
       );
 
-      await printerService.print(buffer);
-      printerService.disconnect();
+      // 1. Database Save Task
+      const saveToDbTask = async () => {
+        await DBServices.createOrder({
+          kotNo,
+          tableNo,
+          orderType: isPickup ? 'pickup' : 'dine-in',
+          captainId: user?.id || 'unknown',
+          captainName: user?.name || 'Unknown',
+          status: 'running',
+          items: cartItems,
+          specialNote,
+          totalAmount: cartTotal,
+          createdAt: 0 // serverTimestamp handles this inside DBServices
+        });
+
+        if (!isPickup) {
+          await DBServices.updateTableStatusByNo(tableNo, 'running');
+        }
+      };
+
+      // 2. Printer Task
+      const printTask = async () => {
+        await printerService.connect(settings.ipAddress, settings.port);
+        await printerService.print(buffer);
+        printerService.disconnect();
+      };
+
+      // Execute both simultaneously! The printer will start instantly over LAN while Firebase saves over the internet.
+      await Promise.all([saveToDbTask(), printTask()]);
+      
       
       alert('KOT Saved & Printed!');
       clearCart(tableNo);
