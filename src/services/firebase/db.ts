@@ -19,12 +19,15 @@ export const DBServices = {
     await updateDoc(tableRef, { status });
   },
 
-  async updateTableStatusByNo(tableNo: number, status: Table['status']): Promise<void> {
-    const q = query(collection(db, 'tables'), where('tableNo', '==', tableNo));
+  async updateTableStatusByNo(tableNo: number | string, status: Table['status']): Promise<void> {
+    const numericTableNo = Number(tableNo);
+    const q = query(collection(db, 'tables'), where('tableNo', '==', numericTableNo));
     const snapshot = await getDocs(q);
-    snapshot.forEach((document) => {
-      updateDoc(doc(db, 'tables', document.id), { status });
-    });
+    
+    const updatePromises = snapshot.docs.map(document => 
+      updateDoc(doc(db, 'tables', document.id), { status })
+    );
+    await Promise.all(updatePromises);
   },
 
   async addMenuCategory(name: string): Promise<void> {

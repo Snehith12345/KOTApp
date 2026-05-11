@@ -69,12 +69,21 @@ export const CartScreen = () => {
       // 2. Printer Task
       const printTask = async () => {
         try {
-          await printerService.connect(settings.ipAddress, settings.port);
-          await printerService.print(buffer);
-          printerService.disconnect();
+          const printerPromise = (async () => {
+            await printerService.connect(settings.ipAddress, settings.port);
+            await printerService.print(buffer);
+            printerService.disconnect();
+          })();
+          
+          // Strict 2-second timeout so the UI never hangs if the printer is offline
+          await Promise.race([
+            printerPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 2000))
+          ]);
+          
           return "SUCCESS";
         } catch (e) {
-          console.warn("Printer failed:", e);
+          console.warn("Printer failed or timed out:", e);
           return "FAILED";
         }
       };
@@ -89,7 +98,7 @@ export const CartScreen = () => {
       }
       
       clearCart(tableNo);
-      navigation.navigate(Routes.ORDERS);
+      navigation.navigate(Routes.TABLES);
     } catch (error: any) {
       alert(`Error saving KOT: ${error.message}`);
     } finally {

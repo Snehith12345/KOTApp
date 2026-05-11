@@ -27,7 +27,10 @@ export const RunningOrdersScreen = () => {
           onPress: async () => {
             await DBServices.updateOrderStatus(orderId, 'completed');
             if (tableNo !== 0) {
-              await DBServices.updateTableStatusByNo(tableNo, 'available');
+              const remainingOrders = orders.filter(o => o.tableNo === tableNo && o.id !== orderId && o.status === 'running');
+              if (remainingOrders.length === 0) {
+                await DBServices.updateTableStatusByNo(tableNo, 'available');
+              }
             }
           }
         }
@@ -47,7 +50,10 @@ export const RunningOrdersScreen = () => {
           onPress: async () => {
             await DBServices.updateOrderStatus(orderId, 'cancelled');
             if (tableNo !== 0) {
-              await DBServices.updateTableStatusByNo(tableNo, 'available');
+              const remainingOrders = orders.filter(o => o.tableNo === tableNo && o.id !== orderId && o.status === 'running');
+              if (remainingOrders.length === 0) {
+                await DBServices.updateTableStatusByNo(tableNo, 'available');
+              }
             }
           }
         }
