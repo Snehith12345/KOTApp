@@ -24,10 +24,11 @@ export class PrinterService {
         this.client = TcpSocket.createConnection({
           port,
           host: ip,
-          timeout: 5000,
         }, () => {
           resolve();
         });
+
+        this.client.setTimeout(5000);
 
         this.client.on('error', (error) => {
           reject(error);
@@ -37,13 +38,18 @@ export class PrinterService {
           reject(new Error('Connection timeout'));
           this.disconnect();
         });
-      } catch (error) {
-        reject(error);
+      } catch (error: any) {
+        // If the native module is missing (e.g. running in Expo Go), it throws a TypeError
+        if (error instanceof TypeError && error.message.includes('null')) {
+          reject(new Error('Printer is not supported in Expo Go. Please build the APK to test printing.'));
+        } else {
+          reject(error);
+        }
       }
     });
   }
 
-  print(data: Buffer | number[] | string | Uint8Array): Promise<void> {
+  print(data: Buffer | string | Uint8Array): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.client) {
         reject(new Error('Printer not connected'));

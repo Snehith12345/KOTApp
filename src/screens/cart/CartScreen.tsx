@@ -62,7 +62,8 @@ export const CartScreen = () => {
         });
 
         if (!isPickup) {
-          await DBServices.updateTableStatusByNo(tableNo, 'running');
+          // Explicitly mark table as available after printing KOT as requested by user
+          await DBServices.updateTableStatusByNo(tableNo, 'available');
         }
       };
 
