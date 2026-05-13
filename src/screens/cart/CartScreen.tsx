@@ -31,43 +31,38 @@ export const CartScreen = () => {
     : 0;
   const cartItemCount = cartItems.reduce((sum, item) => sum + (item.qty || 0), 0);
 
+  const saveOrderToDb = async () => {
+    const kotNo = previewKotNo;
+    await DBServices.createOrder({
+      kotNo,
+      tableNo,
+      orderType: isPickup ? 'pickup' : 'dine-in',
+      captainId: user?.id || 'unknown',
+      captainName: user?.name || 'Unknown',
+      status: 'running',
+      items: cartItems,
+      specialNote,
+      totalAmount: cartTotal,
+      createdAt: 0 // serverTimestamp handles this inside DBServices
+    });
+
+    if (!isPickup) {
+      await DBServices.updateTableStatusByNo(tableNo, 'available');
+    }
+  };
+
   const handlePrint = async () => {
     if (cartItems.length === 0) return;
     setIsPrinting(true);
     try {
-      const kotNo = previewKotNo;
-
-      // Build printer buffer instantly
       const buffer = ESCPOSService.buildKOT(
-        kotNo,
+        previewKotNo,
         tableNo,
         user?.name || 'Unknown',
         cartItems,
         specialNote
       );
 
-      // 1. Database Save Task
-      const saveToDbTask = async () => {
-        await DBServices.createOrder({
-          kotNo,
-          tableNo,
-          orderType: isPickup ? 'pickup' : 'dine-in',
-          captainId: user?.id || 'unknown',
-          captainName: user?.name || 'Unknown',
-          status: 'running',
-          items: cartItems,
-          specialNote,
-          totalAmount: cartTotal,
-          createdAt: 0 // serverTimestamp handles this inside DBServices
-        });
-
-        if (!isPickup) {
-          // Explicitly mark table as available after printing KOT as requested by user
-          await DBServices.updateTableStatusByNo(tableNo, 'available');
-        }
-      };
-
-      // 2. Printer Task
       const printTask = async () => {
         try {
           const printerPromise = (async () => {
@@ -76,7 +71,6 @@ export const CartScreen = () => {
             printerService.disconnect();
           })();
           
-          // Strict 2-second timeout so the UI never hangs if the printer is offline
           await Promise.race([
             printerPromise,
             new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 2000))
@@ -89,8 +83,7 @@ export const CartScreen = () => {
         }
       };
 
-      // Execute both simultaneously! The printer will start instantly over LAN while Firebase saves over the internet.
-      const [dbResult, printResult] = await Promise.all([saveToDbTask(), printTask()]);
+      const [dbResult, printResult] = await Promise.all([saveOrderToDb(), printTask()]);
       
       if (printResult === "FAILED") {
         alert('KOT Saved to Cloud, but Printer is offline. Please check connection!');
@@ -184,13 +177,7 @@ export const CartScreen = () => {
         </View>
       </ScrollView>
 
-      <View className="p-4 flex-row bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]" style={{ gap: 16 }}>
-        <Button 
-          title="SAVE" 
-          variant="outline"
-          className="flex-1"
-          onPress={() => navigation.navigate(Routes.ORDERS)}
-        />
+      <View className="p-4 flex-row bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
         <Button 
           title="PRINT KOT" 
           className="flex-1"

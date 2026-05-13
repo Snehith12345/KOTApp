@@ -45,7 +45,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ isVisible, onClose
               onPress={() => navigateTo(Routes.ORDERS)}
             >
               <PlusCircle size={24} color="#4B5563" />
-              <Text className="ml-4 text-lg text-gray-700">Running Orders</Text>
+              <Text className="ml-4 text-lg text-gray-700">Orders</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

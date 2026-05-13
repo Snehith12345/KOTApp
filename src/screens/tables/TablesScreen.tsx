@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Menu as MenuIcon, Plus, Search } from 'lucide-react-native';
 import { useTableStore } from '../../store/table.store';
+import { useCartStore } from '../../store/cart.store';
 import { Routes } from '../../constants/routes';
 import { Table } from '../../types/table.types';
 import { DBServices } from '../../services/firebase/db';
@@ -12,6 +13,7 @@ import { HamburgerMenu } from '../../components/common/HamburgerMenu';
 export const TablesScreen = () => {
   const navigation = useNavigation<any>();
   const { tables, isLoading, subscribeToTables } = useTableStore();
+  const carts = useCartStore(state => state.carts);
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -75,18 +77,23 @@ export const TablesScreen = () => {
     );
   };
 
-  const renderTable = useCallback(({ item }: { item: Table }) => (
-    <TouchableOpacity 
-      className={`w-[30%] aspect-square m-[1.5%] rounded-xl border-2 items-center justify-center ${getStatusColor(item.status)} ${getStatusBg(item.status)}`}
-      onPress={() => {
-        navigation.navigate(Routes.MENU, { tableId: item.id, tableNo: item.tableNo });
-      }}
-      onLongPress={() => handleDeleteTable(item.id, item.tableNo)}
-    >
-      <Text className={`text-2xl font-bold ${getStatusColor(item.status).split(' ')[1]}`}>{item.tableNo}</Text>
-      <Text className={`text-xs mt-1 ${getStatusColor(item.status).split(' ')[1]}`}>{item.status}</Text>
-    </TouchableOpacity>
-  ), []);
+  const renderTable = useCallback(({ item }: { item: Table }) => {
+    const hasItems = carts[item.tableNo] && carts[item.tableNo].length > 0;
+    const displayStatus = hasItems ? 'running' : item.status;
+
+    return (
+      <TouchableOpacity 
+        className={`w-[30%] aspect-square m-[1.5%] rounded-xl border-2 items-center justify-center ${getStatusColor(displayStatus)} ${getStatusBg(displayStatus)}`}
+        onPress={() => {
+          navigation.navigate(Routes.MENU, { tableId: item.id, tableNo: item.tableNo });
+        }}
+        onLongPress={() => handleDeleteTable(item.id, item.tableNo)}
+      >
+        <Text className={`text-2xl font-bold ${getStatusColor(displayStatus).split(' ')[1]}`}>{item.tableNo}</Text>
+        <Text className={`text-xs mt-1 ${getStatusColor(displayStatus).split(' ')[1]}`}>{displayStatus}</Text>
+      </TouchableOpacity>
+    );
+  }, [carts]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
