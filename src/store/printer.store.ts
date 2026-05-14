@@ -10,9 +10,11 @@ interface PrinterState {
 export const usePrinterStore = create<PrinterState>((set) => ({
   settings: {
     printerType: PrinterConstants.DEFAULT_TYPE as any,
-    printerName: 'Kitchen Printer',
+    printerName: 'Primary Printer',
     ipAddress: PrinterConstants.DEFAULT_IP,
     port: PrinterConstants.DEFAULT_PORT,
+    kitchenIpAddress: '192.168.1.101',
+    kitchenPort: 9100,
   },
   setSettings: (settings) => set({ settings }),
 }));

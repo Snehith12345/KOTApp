@@ -14,6 +14,8 @@ export const PrinterSettingsScreen = () => {
   
   const [ipAddress, setIpAddress] = useState(settings.ipAddress);
   const [port, setPort] = useState(settings.port.toString());
+  const [kitchenIpAddress, setKitchenIpAddress] = useState(settings.kitchenIpAddress);
+  const [kitchenPort, setKitchenPort] = useState(settings.kitchenPort.toString());
   const [isTesting, setIsTesting] = useState(false);
 
   const handleSave = () => {
@@ -21,6 +23,8 @@ export const PrinterSettingsScreen = () => {
       ...settings,
       ipAddress,
       port: parseInt(port, 10),
+      kitchenIpAddress,
+      kitchenPort: parseInt(kitchenPort, 10),
     });
     alert('Settings Saved!');
   };
@@ -66,14 +70,7 @@ export const PrinterSettingsScreen = () => {
           </View>
         </View>
 
-        <View className="mb-6">
-          <Text className="text-gray-700 font-medium mb-2">Printer Name</Text>
-          <TextInput
-            value={settings.printerName}
-            editable={false}
-            className="bg-gray-100 border border-gray-300 rounded-lg p-3 text-gray-500"
-          />
-        </View>
+        <Text className="text-lg font-bold mb-4 text-[#5D3FD3]">Primary Printer (Billing)</Text>
 
         <View className="mb-6">
           <Text className="text-gray-700 font-medium mb-2">IP Address</Text>
@@ -95,18 +92,45 @@ export const PrinterSettingsScreen = () => {
           />
         </View>
 
-        <Button 
-          title="TEST PRINT" 
-          onPress={handleTestPrint} 
-          isLoading={isTesting}
-          className="mb-4"
-        />
-        
-        <Button 
-          title="SAVE SETTINGS" 
-          onPress={handleSave} 
-          variant="outline"
-        />
+        <View className="border-t border-gray-200 pt-6 mb-4">
+          <Text className="text-lg font-bold mb-4 text-[#5D3FD3]">Kitchen Printer (KOT)</Text>
+          
+          <View className="mb-6">
+            <Text className="text-gray-700 font-medium mb-2">IP Address</Text>
+            <TextInput
+              value={kitchenIpAddress}
+              onChangeText={setKitchenIpAddress}
+              keyboardType="numeric"
+              className="bg-white border border-gray-300 rounded-lg p-3 text-gray-800"
+            />
+          </View>
+
+          <View className="mb-8">
+            <Text className="text-gray-700 font-medium mb-2">Port</Text>
+            <TextInput
+              value={kitchenPort}
+              onChangeText={setKitchenPort}
+              keyboardType="numeric"
+              className="bg-white border border-gray-300 rounded-lg p-3 text-gray-800"
+            />
+          </View>
+        </View>
+
+        <View className="mt-4 pb-8">
+          <Button 
+            title="TEST PRINT" 
+            onPress={handleTestPrint} 
+            isLoading={isTesting}
+          />
+          
+          <View className="h-4" />
+          
+          <Button 
+            title="SAVE SETTINGS" 
+            onPress={handleSave} 
+            variant="outline"
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

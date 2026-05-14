@@ -113,7 +113,7 @@ export const TablesScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <View className="p-4">
+      <View className="flex-1 p-4">
         <TouchableOpacity 
           className="bg-[#5D3FD3] rounded-lg px-4 py-4 mb-4 flex-row items-center justify-center shadow-sm"
           onPress={() => navigation.navigate(Routes.MENU, { tableId: '0', tableNo: 0 })}

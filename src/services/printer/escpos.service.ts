@@ -74,6 +74,51 @@ export class ESCPOSService {
     return new Uint8Array(buffer);
   }
 
+  static buildKitchenSlip(tableNo: number, itemName: string, qty: number): Uint8Array {
+    let buffer: number[] = [];
+
+    // Initialize printer
+    buffer.push(...this.INIT);
+
+    // Header
+    buffer.push(...this.ALIGN_CENTER);
+    buffer.push(...this.DOUBLE_HEIGHT_WIDTH);
+    buffer.push(...this.stringToBytes(`NEW ITEM\n`));
+    buffer.push(...this.NORMAL_SIZE);
+    
+    buffer.push(...this.BOLD_ON);
+    if (tableNo === 0) {
+      buffer.push(...this.stringToBytes(`*** PICK UP ***\n`));
+    } else {
+      buffer.push(...this.stringToBytes(`Table No: ${tableNo}\n`));
+    }
+    buffer.push(...this.BOLD_OFF);
+
+    buffer.push(...this.stringToBytes('--------------------------------\n'));
+
+    // Details
+    buffer.push(...this.ALIGN_LEFT);
+    const date = new Date();
+    buffer.push(...this.stringToBytes(`Time: ${date.toLocaleTimeString()}\n`));
+    
+    buffer.push(...this.stringToBytes('--------------------------------\n'));
+    
+    // Items
+    buffer.push(...this.DOUBLE_HEIGHT_WIDTH);
+    buffer.push(...this.stringToBytes(`${qty} x ${itemName}\n`));
+    buffer.push(...this.NORMAL_SIZE);
+
+    buffer.push(...this.stringToBytes('--------------------------------\n'));
+    
+    // Feed and cut
+    buffer.push(...this.NEW_LINE);
+    buffer.push(...this.NEW_LINE);
+    buffer.push(...this.NEW_LINE);
+    buffer.push(...this.CUT);
+
+    return new Uint8Array(buffer);
+  }
+
   private static stringToBytes(str: string): number[] {
     const bytes: number[] = [];
     for (let i = 0; i < str.length; i++) {

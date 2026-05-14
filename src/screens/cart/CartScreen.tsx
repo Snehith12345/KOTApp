@@ -177,10 +177,10 @@ export const CartScreen = () => {
         </View>
       </ScrollView>
 
-      <View className="p-4 flex-row bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+      <View className="p-4 flex-row bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-8">
         <Button 
           title="PRINT KOT" 
-          className="flex-1"
+          className="flex-1 py-5"
           onPress={handlePrint}
           isLoading={isPrinting}
         />

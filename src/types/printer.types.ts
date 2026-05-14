@@ -3,4 +3,6 @@ export interface PrinterSettings {
   printerName: string;
   ipAddress: string;
   port: number;
+  kitchenIpAddress: string;
+  kitchenPort: number;
 }

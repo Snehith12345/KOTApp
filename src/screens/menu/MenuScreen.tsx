@@ -5,9 +5,12 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
 import { useMenuStore } from '../../store/menu.store';
 import { useCartStore } from '../../store/cart.store';
+import { usePrinterStore } from '../../store/printer.store';
 import { Routes } from '../../constants/routes';
 import { MenuItem } from '../../types/menu.types';
 import { DBServices } from '../../services/firebase/db';
+import { printerService } from '../../services/printer/printer.service';
+import { ESCPOSService } from '../../services/printer/escpos.service';
 
 export const MenuScreen = () => {
   const route = useRoute<any>();
@@ -25,6 +28,7 @@ export const MenuScreen = () => {
   const updateQuantity = useCartStore(state => state.updateQuantity);
   const removeItem = useCartStore(state => state.removeItem);
   
+  const { settings } = usePrinterStore();
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   useEffect(() => {
@@ -40,6 +44,30 @@ export const MenuScreen = () => {
   const handleIncrement = async (item: MenuItem) => {
     try {
       addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price });
+      
+      // Print to kitchen instantly, but ONLY for dine-in tables (not pick-up)
+      if (tableNo !== 0 && settings.kitchenIpAddress && settings.kitchenPort) {
+        // Fire and forget so it doesn't hang the UI
+        (async () => {
+          try {
+            const buffer = ESCPOSService.buildKitchenSlip(tableNo, item.name || 'Item', 1);
+            
+            // We use a separate short timeout promise for the kitchen printer
+            const printTask = async () => {
+              await printerService.connect(settings.kitchenIpAddress, settings.kitchenPort);
+              await printerService.print(buffer);
+              printerService.disconnect();
+            };
+            
+            await Promise.race([
+              printTask(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 1500))
+            ]);
+          } catch (printError) {
+            console.warn("Kitchen print failed:", printError);
+          }
+        })();
+      }
     } catch (error) {
       console.warn("Failed to increment item", error);
     }
