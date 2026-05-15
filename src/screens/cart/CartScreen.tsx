@@ -73,7 +73,7 @@ export const CartScreen = () => {
           
           await Promise.race([
             printerPromise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 2000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
           ]);
           
           return "SUCCESS";

@@ -29,25 +29,47 @@ export const PrinterSettingsScreen = () => {
     alert('Settings Saved!');
   };
 
-  const handleTestPrint = async () => {
+  const handleTestPrimary = async () => {
     setIsTesting(true);
     try {
       await printerService.connect(ipAddress, parseInt(port, 10));
       
       const buffer = ESCPOSService.buildKOT(
-        99,
+        'TEST',
         0,
         'Test User',
-        [{ itemName: 'Test Item', qty: 1, price: 0 }],
-        'This is a test print'
+        [{ itemName: 'Test Primary', qty: 1, price: 0 }],
+        'Testing Primary Printer'
       );
 
       await printerService.print(buffer);
       printerService.disconnect();
       
-      alert('Test Print Successful!');
+      alert('Primary Print Successful!');
     } catch (error: any) {
-      alert(`Test Print Failed: ${error.message}`);
+      alert(`Primary Print Failed: ${error.message}`);
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleTestKitchen = async () => {
+    setIsTesting(true);
+    try {
+      await printerService.connect(kitchenIpAddress, parseInt(kitchenPort, 10));
+      
+      const buffer = ESCPOSService.buildKitchenSlip(
+        0,
+        'Test Kitchen Item',
+        1
+      );
+
+      await printerService.print(buffer);
+      printerService.disconnect();
+      
+      alert('Kitchen Print Successful!');
+    } catch (error: any) {
+      alert(`Kitchen Print Failed: ${error.message}`);
     } finally {
       setIsTesting(false);
     }
@@ -118,8 +140,16 @@ export const PrinterSettingsScreen = () => {
 
         <View className="mt-4 pb-8">
           <Button 
-            title="TEST PRINT" 
-            onPress={handleTestPrint} 
+            title="TEST BILLING PRINTER" 
+            onPress={handleTestPrimary} 
+            isLoading={isTesting}
+          />
+          
+          <View className="h-4" />
+
+          <Button 
+            title="TEST KITCHEN PRINTER" 
+            onPress={handleTestKitchen} 
             isLoading={isTesting}
           />
           

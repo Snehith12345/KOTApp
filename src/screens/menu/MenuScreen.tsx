@@ -61,7 +61,7 @@ export const MenuScreen = () => {
             
             await Promise.race([
               printTask(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 1500))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
             ]);
           } catch (printError) {
             console.warn("Kitchen print failed:", printError);
