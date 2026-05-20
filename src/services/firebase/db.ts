@@ -1,4 +1,4 @@
-import { collection, addDoc, updateDoc, doc, setDoc, serverTimestamp, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, setDoc, getDoc, serverTimestamp, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from './config';
 import { Table } from '../../types/table.types';
 import { MenuCategory, MenuItem } from '../../types/menu.types';
@@ -12,6 +12,17 @@ export const DBServices = {
       tableNo,
       status: 'available'
     });
+  },
+
+  async getNextSequenceNumber(): Promise<number> {
+    const seqRef = doc(db, 'settings', 'sequence');
+    const docSnap = await getDoc(seqRef);
+    let nextSeq = 1;
+    if (docSnap.exists()) {
+      nextSeq = (docSnap.data().value || 0) + 1;
+    }
+    await setDoc(seqRef, { value: nextSeq }, { merge: true });
+    return nextSeq;
   },
 
   async updateTableStatus(id: string, status: Table['status']): Promise<void> {

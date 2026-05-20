@@ -7,10 +7,10 @@ import { useMenuStore } from '../../store/menu.store';
 import { useCartStore } from '../../store/cart.store';
 import { usePrinterStore } from '../../store/printer.store';
 import { Routes } from '../../constants/routes';
-import { MenuItem } from '../../types/menu.types';
 import { DBServices } from '../../services/firebase/db';
 import { printerService } from '../../services/printer/printer.service';
 import { ESCPOSService } from '../../services/printer/escpos.service';
+import { useAuthStore } from '../../store/auth.store';
 
 export const MenuScreen = () => {
   const route = useRoute<any>();
@@ -45,29 +45,8 @@ export const MenuScreen = () => {
     try {
       addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price });
       
-      // Print to kitchen instantly, but ONLY for dine-in tables (not pick-up)
-      if (tableNo !== 0 && settings.kitchenIpAddress && settings.kitchenPort) {
-        // Fire and forget so it doesn't hang the UI
-        (async () => {
-          try {
-            const buffer = ESCPOSService.buildKitchenSlip(tableNo, item.name || 'Item', 1);
-            
-            // We use a separate short timeout promise for the kitchen printer
-            const printTask = async () => {
-              await printerService.connect(settings.kitchenIpAddress, settings.kitchenPort);
-              await printerService.print(buffer);
-              printerService.disconnect();
-            };
-            
-            await Promise.race([
-              printTask(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
-            ]);
-          } catch (printError) {
-            console.warn("Kitchen print failed:", printError);
-          }
-        })();
-      }
+      // We removed the instant fire-and-forget printing per user request.
+      // Printing is now done collectively via the "SEND ORDER TO KITCHEN" button.
     } catch (error) {
       console.warn("Failed to increment item", error);
     }
@@ -101,12 +80,12 @@ export const MenuScreen = () => {
     
     return (
       <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-        <View className="flex-row items-center flex-1">
+        <View className="flex-row items-center flex-1 pr-4">
           <View className="w-12 h-12 bg-gray-200 rounded-full mr-3 items-center justify-center">
             <Text className="text-xl">O</Text>
           </View>
-          <View>
-            <Text className="font-bold text-gray-800 text-base">{item.name || 'Item'}</Text>
+          <View className="flex-1">
+            <Text className="font-bold text-gray-800 text-base" numberOfLines={2}>{item.name || 'Item'}</Text>
             <Text className="text-gray-500">₹{itemPrice}</Text>
           </View>
         </View>
@@ -130,6 +109,72 @@ export const MenuScreen = () => {
       </View>
     );
   }, [cartItems, tableNo, getCartQty]);
+
+  const [isSendingToKitchen, setIsSendingToKitchen] = useState(false);
+  const { user } = useAuthStore();
+  const markAsSent = useCartStore(state => state.markAsSent);
+
+  // Filter items that have unsent quantities
+  const unsentItems = cartItems
+    .map(item => ({
+      ...item,
+      qty: item.qty - (item.sentQty || 0)
+    }))
+    .filter(item => item.qty > 0);
+  
+  const unsentCount = unsentItems.reduce((sum, item) => sum + item.qty, 0);
+
+  const handleSendToKitchen = async () => {
+    if (unsentItems.length === 0) return;
+    setIsSendingToKitchen(true);
+    try {
+      const kotNo = await DBServices.getNextSequenceNumber();
+
+      if (tableNo !== 0) {
+        await DBServices.updateTableStatusByNo(tableNo, 'running');
+      }
+
+      // Print KOT to Kitchen Printer with ONLY unsent items
+      const buffer = ESCPOSService.buildKOT(
+        kotNo,
+        tableNo,
+        user?.name || 'Unknown',
+        unsentItems
+      );
+
+      const printTask = async () => {
+        try {
+          const printerPromise = (async () => {
+            await printerService.connect(settings.kitchenIpAddress, settings.kitchenPort);
+            await printerService.print(buffer);
+            printerService.disconnect();
+          })();
+          
+          await Promise.race([
+            printerPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000))
+          ]);
+          return "SUCCESS";
+        } catch (e) {
+          console.warn("Printer failed or timed out:", e);
+          return "FAILED";
+        }
+      };
+
+      const printResult = await printTask();
+      
+      if (printResult === "FAILED") {
+        alert('Printer is offline. Please check connection!');
+      } else {
+        alert('Order sent to Kitchen!');
+        markAsSent(tableNo);
+      }
+    } catch (error: any) {
+      alert(`Error sending order: ${error.message}`);
+    } finally {
+      setIsSendingToKitchen(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -180,13 +225,25 @@ export const MenuScreen = () => {
       )}
 
       {cartItemCount > 0 && (
-        <View className="absolute bottom-4 left-4 right-4">
+        <View className="absolute bottom-4 left-4 right-4 flex-row gap-3 bg-white p-3 rounded-2xl shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.1)]">
+          {unsentCount > 0 && (
+            <TouchableOpacity 
+              className="bg-orange-500 p-4 rounded-xl flex-1 justify-center items-center shadow-sm"
+              onPress={handleSendToKitchen}
+              disabled={isSendingToKitchen}
+            >
+              {isSendingToKitchen ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-bold text-base text-center">Send {unsentCount}</Text>
+              )}
+            </TouchableOpacity>
+          )}
           <TouchableOpacity 
-            className="bg-[#5D3FD3] p-4 rounded-xl flex-row justify-between items-center shadow-lg"
+            className="bg-[#5D3FD3] p-4 rounded-xl flex-1 justify-center items-center shadow-sm flex-row"
             onPress={() => navigation.navigate(Routes.CART, { tableNo })}
           >
-            <Text className="text-white font-bold text-lg">View Cart ({cartItemCount})</Text>
-            <Text className="text-white font-bold text-lg">₹{cartTotal}</Text>
+            <Text className="text-white font-bold text-base text-center">Cart ({cartItemCount})</Text>
           </TouchableOpacity>
         </View>
       )}

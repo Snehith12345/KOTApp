@@ -3,14 +3,17 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { OrderItem } from '../types/order.types';
 
+export type CartItem = Omit<OrderItem, 'id' | 'orderId'> & { sentQty?: number };
+
 interface CartState {
-  carts: Record<number, Omit<OrderItem, 'id' | 'orderId'>[]>;
+  carts: Record<number, CartItem[]>;
   addItem: (tableNo: number, item: Omit<OrderItem, 'id' | 'orderId'>) => void;
   removeItem: (tableNo: number, itemId: string) => void;
   updateQuantity: (tableNo: number, itemId: string, qty: number) => void;
   updateNote: (tableNo: number, itemId: string, note: string) => void;
+  markAsSent: (tableNo: number) => void;
   clearCart: (tableNo: number) => void;
-  getCart: (tableNo: number) => Omit<OrderItem, 'id' | 'orderId'>[];
+  getCart: (tableNo: number) => CartItem[];
 }
 
 export const useCartStore = create<CartState>()(
@@ -60,6 +63,15 @@ export const useCartStore = create<CartState>()(
           carts: {
             ...state.carts,
             [tableNo]: tableCart.map(i => i.itemId === itemId ? { ...i, note } : i)
+          }
+        };
+      }),
+      markAsSent: (tableNo) => set((state) => {
+        const tableCart = state.carts[tableNo] || [];
+        return {
+          carts: {
+            ...state.carts,
+            [tableNo]: tableCart.map(i => ({ ...i, sentQty: i.qty }))
           }
         };
       }),

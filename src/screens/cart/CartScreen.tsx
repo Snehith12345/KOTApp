@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { ArrowLeft, User } from 'lucide-react-native';
@@ -23,7 +23,15 @@ export const CartScreen = () => {
   const { settings } = usePrinterStore();
   const [specialNote, setSpecialNote] = useState('');
   const [isPrinting, setIsPrinting] = useState(false);
-  const [previewKotNo] = useState(() => Math.floor(Math.random() * 100) + 1);
+  const [previewKotNo, setPreviewKotNo] = useState(0);
+
+  React.useEffect(() => {
+    const fetchSeq = async () => {
+      const seq = await DBServices.getNextSequenceNumber();
+      setPreviewKotNo(seq);
+    };
+    fetchSeq();
+  }, []);
   const isPickup = tableNo === 0;
 
   const cartTotal = cartItems && Array.isArray(cartItems) 
@@ -55,12 +63,11 @@ export const CartScreen = () => {
     if (cartItems.length === 0) return;
     setIsPrinting(true);
     try {
-      const buffer = ESCPOSService.buildKOT(
+      const buffer = ESCPOSService.buildBill(
         previewKotNo,
         tableNo,
         user?.name || 'Unknown',
-        cartItems,
-        specialNote
+        cartItems
       );
 
       const printTask = async () => {
@@ -86,9 +93,9 @@ export const CartScreen = () => {
       const [dbResult, printResult] = await Promise.all([saveOrderToDb(), printTask()]);
       
       if (printResult === "FAILED") {
-        alert('KOT Saved to Cloud, but Printer is offline. Please check connection!');
+        alert('Order Saved to Cloud, but Billing Printer is offline. Please check connection!');
       } else {
-        alert('KOT Saved & Printed!');
+        alert('Bill Printed & Saved!');
       }
       
       clearCart(tableNo);
@@ -117,14 +124,18 @@ export const CartScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}>
           <ArrowLeft size={24} color="#000" />
         </TouchableOpacity>
-        <Text className="text-xl font-bold ml-4">KOT Preview</Text>
+        <Text className="text-xl font-bold ml-4">Bill Preview</Text>
       </View>
 
       <ScrollView className="flex-1 p-4">
         <View className="flex-row justify-between mb-6">
           <View>
-            <Text className="text-gray-500 text-sm">KOT No.</Text>
-            <Text className="text-2xl font-bold">#{previewKotNo}</Text>
+            <Text className="text-gray-500 text-sm">Bill No.</Text>
+            {previewKotNo === 0 ? (
+              <ActivityIndicator size="small" color="#5D3FD3" style={{ marginTop: 4, alignSelf: 'flex-start' }} />
+            ) : (
+              <Text className="text-2xl font-bold">#{previewKotNo}</Text>
+            )}
           </View>
           <View>
             <Text className="text-gray-500 text-sm">Date & Time</Text>
@@ -179,7 +190,7 @@ export const CartScreen = () => {
 
       <View className="p-4 flex-row bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-8">
         <Button 
-          title="PRINT KOT" 
+          title="PRINT BILL" 
           className="flex-1 py-5"
           onPress={handlePrint}
           isLoading={isPrinting}
