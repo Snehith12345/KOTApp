@@ -121,11 +121,11 @@ export const TablesScreen = () => {
           <Text className="text-white font-bold text-lg">🛍️ New Pick Up Order</Text>
         </TouchableOpacity>
 
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2 mb-4">
-          <Search size={20} color="#666" />
+        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-1.5 mb-4">
+          <Search size={16} color="#666" />
           <TextInput 
             placeholder="Search Table" 
-            className="flex-1 ml-2 text-base"
+            className="flex-1 ml-2 text-sm py-0.5"
             value={search}
             onChangeText={setSearch}
             keyboardType="numeric"

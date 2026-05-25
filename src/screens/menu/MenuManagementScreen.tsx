@@ -108,9 +108,9 @@ export const MenuManagementScreen = () => {
 
   const renderItem = useCallback(({ item }: { item: MenuItem }) => (
     <View className="flex-row justify-between items-center bg-white p-4 mb-2 rounded-xl border border-gray-100 shadow-sm mx-4">
-      <View>
+      <View className="flex-1 mr-4">
         <Text className="font-bold text-gray-800 text-base">{item.name}</Text>
-        <Text className="text-gray-500">₹{Number(item.price || 0).toFixed(2)}</Text>
+        <Text className="text-gray-500 mt-1">₹{Number(item.price || 0).toFixed(2)}</Text>
       </View>
       <View className="flex-row gap-2">
         <TouchableOpacity 

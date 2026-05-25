@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Search } from 'lucide-react-native';
 import { useMenuStore } from '../../store/menu.store';
 import { useCartStore } from '../../store/cart.store';
 import { usePrinterStore } from '../../store/printer.store';
@@ -30,6 +30,7 @@ export const MenuScreen = () => {
   
   const { settings } = usePrinterStore();
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const unsubscribe = subscribeToMenu();
@@ -176,6 +177,10 @@ export const MenuScreen = () => {
     }
   };
 
+  const filteredItems = (Array.isArray(items) ? items : [])
+    .filter(i => activeCategory === 'all' || i.categoryId === activeCategory)
+    .filter(i => (i.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -186,6 +191,18 @@ export const MenuScreen = () => {
           <Text className="text-xl font-bold ml-4">
             {tableNo === 0 ? 'Pick Up Order' : `Menu (Table ${tableNo})`}
           </Text>
+        </View>
+      </View>
+
+      <View className="px-4 py-1.5 bg-white">
+        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-1.5">
+          <Search size={16} color="#6B7280" />
+          <TextInput 
+            className="flex-1 ml-2 text-sm text-gray-800 py-0.5"
+            placeholder="Search items..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
       </View>
 
@@ -215,7 +232,7 @@ export const MenuScreen = () => {
       ) : (
         <View className="flex-1">
           <FlatList
-            data={activeCategory === 'all' ? (Array.isArray(items) ? items : []) : (Array.isArray(items) ? items : []).filter(i => i.categoryId === activeCategory)}
+            data={filteredItems}
             renderItem={renderItem}
             keyExtractor={(item, index) => item?.id ? String(item.id) : String(index)}
             contentContainerStyle={{ paddingBottom: 100 }}
@@ -225,25 +242,25 @@ export const MenuScreen = () => {
       )}
 
       {cartItemCount > 0 && (
-        <View className="absolute bottom-4 left-4 right-4 flex-row gap-3 bg-white p-3 rounded-2xl shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.1)]">
+        <View className="absolute bottom-4 left-4 right-4 flex-row gap-3 bg-white p-2 rounded-xl shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.1)]">
           {unsentCount > 0 && (
             <TouchableOpacity 
-              className="bg-orange-500 p-4 rounded-xl flex-1 justify-center items-center shadow-sm"
+              className="bg-orange-500 p-2.5 rounded-lg flex-1 justify-center items-center shadow-sm"
               onPress={handleSendToKitchen}
               disabled={isSendingToKitchen}
             >
               {isSendingToKitchen ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text className="text-white font-bold text-base text-center">Send {unsentCount}</Text>
+                <Text className="text-white font-bold text-sm text-center">Send to Kitchen ({unsentCount})</Text>
               )}
             </TouchableOpacity>
           )}
           <TouchableOpacity 
-            className="bg-[#5D3FD3] p-4 rounded-xl flex-1 justify-center items-center shadow-sm flex-row"
+            className="bg-[#5D3FD3] p-2.5 rounded-lg flex-1 justify-center items-center shadow-sm flex-row"
             onPress={() => navigation.navigate(Routes.CART, { tableNo })}
           >
-            <Text className="text-white font-bold text-base text-center">Cart ({cartItemCount})</Text>
+            <Text className="text-white font-bold text-sm text-center">Cart ({cartItemCount})</Text>
           </TouchableOpacity>
         </View>
       )}

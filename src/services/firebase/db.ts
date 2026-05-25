@@ -94,6 +94,10 @@ export const DBServices = {
     await deleteDoc(doc(db, 'menuItems', id));
   },
 
+  async deleteOrder(id: string): Promise<void> {
+    await deleteDoc(doc(db, 'orders', id));
+  },
+
   async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<void> {
     const itemRef = doc(db, 'menuItems', id);
     await updateDoc(itemRef, updates);
