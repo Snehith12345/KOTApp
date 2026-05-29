@@ -159,6 +159,7 @@ export const RunningOrdersScreen = () => {
           renderItem={renderOrder}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 50 }}
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View className="flex-1 justify-center items-center py-20">
               <Text className="text-gray-400 font-medium">No orders found</Text>

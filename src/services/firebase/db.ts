@@ -1,4 +1,4 @@
-import { collection, addDoc, updateDoc, doc, setDoc, getDoc, serverTimestamp, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, setDoc, getDoc, serverTimestamp, deleteDoc, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from './config';
 import { Table } from '../../types/table.types';
 import { MenuCategory, MenuItem } from '../../types/menu.types';
@@ -101,5 +101,38 @@ export const DBServices = {
   async updateMenuItem(id: string, updates: Partial<MenuItem>): Promise<void> {
     const itemRef = doc(db, 'menuItems', id);
     await updateDoc(itemRef, updates);
+  },
+
+  async updateCart(tableNo: number, items: any[]): Promise<void> {
+    const cartRef = doc(db, 'carts', String(tableNo));
+    if (items.length === 0) {
+      try {
+        await deleteDoc(cartRef);
+      } catch (err) {
+        console.warn('Error deleting cart doc:', err);
+      }
+    } else {
+      await setDoc(cartRef, {
+        tableNo,
+        items,
+        updatedAt: serverTimestamp()
+      });
+    }
+  },
+
+  subscribeToCarts(onUpdate: (carts: Record<number, any[]>) => void): () => void {
+    const q = collection(db, 'carts');
+    return onSnapshot(q, (snapshot) => {
+      const cartsData: Record<number, any[]> = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data && typeof data.tableNo === 'number') {
+          cartsData[data.tableNo] = data.items || [];
+        }
+      });
+      onUpdate(cartsData);
+    }, (error) => {
+      console.error("Error listening to carts:", error);
+    });
   }
 };

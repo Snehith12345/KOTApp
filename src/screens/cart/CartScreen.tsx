@@ -75,7 +75,7 @@ export const CartScreen = () => {
           const printerPromise = (async () => {
             await printerService.connect(settings.ipAddress, settings.port);
             await printerService.print(buffer);
-            printerService.disconnect();
+            await printerService.disconnect();
           })();
           
           await Promise.race([
@@ -127,7 +127,7 @@ export const CartScreen = () => {
         <Text className="text-xl font-bold ml-4">Bill Preview</Text>
       </View>
 
-      <ScrollView className="flex-1 p-4">
+      <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
         <View className="flex-row justify-between mb-6">
           <View>
             <Text className="text-gray-500 text-sm">Bill No.</Text>

@@ -43,7 +43,7 @@ export const PrinterSettingsScreen = () => {
       );
 
       await printerService.print(buffer);
-      printerService.disconnect();
+      await printerService.disconnect();
       
       alert('Primary Print Successful!');
     } catch (error: any) {
@@ -65,7 +65,7 @@ export const PrinterSettingsScreen = () => {
       );
 
       await printerService.print(buffer);
-      printerService.disconnect();
+      await printerService.disconnect();
       
       alert('Kitchen Print Successful!');
     } catch (error: any) {

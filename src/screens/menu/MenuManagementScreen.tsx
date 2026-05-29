@@ -153,6 +153,7 @@ export const MenuManagementScreen = () => {
           showsHorizontalScrollIndicator={false}
           data={[{ id: 'all', name: 'All' }, ...categories]}
           keyExtractor={(item, index) => item?.id || index.toString()}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <TouchableOpacity 
               className={`px-4 py-2 mx-2 rounded-full flex-row items-center ${activeCategory === item.id ? 'bg-[#5D3FD3]' : 'bg-gray-100'}`}
@@ -181,6 +182,7 @@ export const MenuManagementScreen = () => {
         renderItem={renderItem}
         keyExtractor={(item, index) => item?.id || index.toString()}
         contentContainerStyle={{ paddingBottom: 100 }}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={<Text className="text-center text-gray-500 mt-10">No items found.</Text>}
       />
 

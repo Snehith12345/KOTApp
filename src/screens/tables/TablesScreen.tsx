@@ -19,8 +19,12 @@ export const TablesScreen = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = subscribeToTables();
-    return () => unsubscribe();
+    const unsubscribeTables = subscribeToTables();
+    const unsubscribeCarts = useCartStore.getState().subscribeToCarts();
+    return () => {
+      unsubscribeTables();
+      unsubscribeCarts();
+    };
   }, []);
 
   const handleAddTable = async () => {
@@ -152,6 +156,7 @@ export const TablesScreen = () => {
             numColumns={3}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<Text className="text-center text-gray-500 mt-10">No tables found. Click + to add one.</Text>}
           />
         )}

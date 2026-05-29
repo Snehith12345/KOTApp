@@ -11,6 +11,7 @@ import { DBServices } from '../../services/firebase/db';
 import { printerService } from '../../services/printer/printer.service';
 import { ESCPOSService } from '../../services/printer/escpos.service';
 import { useAuthStore } from '../../store/auth.store';
+import { MenuItem } from '../../types/menu.types';
 
 export const MenuScreen = () => {
   const route = useRoute<any>();
@@ -44,7 +45,7 @@ export const MenuScreen = () => {
 
   const handleIncrement = async (item: MenuItem) => {
     try {
-      addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price });
+      addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price, qty: 1 });
       
       // We removed the instant fire-and-forget printing per user request.
       // Printing is now done collectively via the "SEND ORDER TO KITCHEN" button.
@@ -148,7 +149,7 @@ export const MenuScreen = () => {
           const printerPromise = (async () => {
             await printerService.connect(settings.kitchenIpAddress, settings.kitchenPort);
             await printerService.print(buffer);
-            printerService.disconnect();
+            await printerService.disconnect();
           })();
           
           await Promise.race([
@@ -212,6 +213,7 @@ export const MenuScreen = () => {
           showsHorizontalScrollIndicator={false}
           data={[{ id: 'all', name: 'All' }, ...(Array.isArray(categories) ? categories : [])]}
           keyExtractor={(item, index) => item?.id ? String(item.id) : String(index)}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <TouchableOpacity 
               className={`px-4 py-2 mx-2 rounded-full justify-center items-center ${activeCategory === item.id ? 'bg-[#5D3FD3]' : 'bg-gray-100'}`}
@@ -235,14 +237,15 @@ export const MenuScreen = () => {
             data={filteredItems}
             renderItem={renderItem}
             keyExtractor={(item, index) => item?.id ? String(item.id) : String(index)}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={<Text className="text-center text-gray-500 mt-10">No items available.</Text>}
           />
         </View>
       )}
 
       {cartItemCount > 0 && (
-        <View className="absolute bottom-4 left-4 right-4 flex-row gap-3 bg-white p-2 rounded-xl shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.1)]">
+        <View className="flex-row gap-3 bg-white p-4 border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
           {unsentCount > 0 && (
             <TouchableOpacity 
               className="bg-orange-500 p-2.5 rounded-lg flex-1 justify-center items-center shadow-sm"

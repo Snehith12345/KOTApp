@@ -20,8 +20,9 @@ export class PrinterService {
     return Promise.resolve();
   }
 
-  disconnect() {
+  disconnect(): Promise<void> {
     console.log('[Web Mock] Disconnecting from printer');
+    return Promise.resolve();
   }
 }
 
