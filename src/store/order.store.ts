@@ -15,7 +15,7 @@ export const useOrderStore = create<OrderState>((set) => ({
   subscribeToOrders: () => {
     const q = query(
       collection(db, 'orders'), 
-      where('status', 'in', ['running', 'completed']),
+      where('status', '==', 'completed'),
       orderBy('createdAt', 'desc')
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {

@@ -16,7 +16,6 @@ interface CartState {
   markAsSent: (tableNo: number) => void;
   clearCart: (tableNo: number) => void;
   getCart: (tableNo: number) => CartItem[];
-  subscribeToCarts: () => () => void;
 }
 
 export const useCartStore = create<CartState>()(
@@ -25,11 +24,6 @@ export const useCartStore = create<CartState>()(
       carts: {},
       getCart: (tableNo) => get().carts[tableNo] || [],
       setCarts: (carts) => set({ carts }),
-      subscribeToCarts: () => {
-        return DBServices.subscribeToCarts((cartsData) => {
-          set({ carts: cartsData });
-        });
-      },
       addItem: (tableNo, item) => {
         const currentCarts = get().carts;
         const tableCart = currentCarts[tableNo] || [];

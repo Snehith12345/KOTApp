@@ -47,7 +47,7 @@ export const CartScreen = () => {
       orderType: isPickup ? 'pickup' : 'dine-in',
       captainId: user?.id || 'unknown',
       captainName: user?.name || 'Unknown',
-      status: 'running',
+      status: 'completed',
       items: cartItems,
       specialNote,
       totalAmount: cartTotal,

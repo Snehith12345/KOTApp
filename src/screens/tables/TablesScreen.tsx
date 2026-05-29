@@ -12,20 +12,11 @@ import { HamburgerMenu } from '../../components/common/HamburgerMenu';
 
 export const TablesScreen = () => {
   const navigation = useNavigation<any>();
-  const { tables, isLoading, subscribeToTables } = useTableStore();
+  const { tables, isLoading } = useTableStore();
   const carts = useCartStore(state => state.carts);
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    const unsubscribeTables = subscribeToTables();
-    const unsubscribeCarts = useCartStore.getState().subscribeToCarts();
-    return () => {
-      unsubscribeTables();
-      unsubscribeCarts();
-    };
-  }, []);
 
   const handleAddTable = async () => {
     setIsAdding(true);

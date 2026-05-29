@@ -104,35 +104,20 @@ export const DBServices = {
   },
 
   async updateCart(tableNo: number, items: any[]): Promise<void> {
-    const cartRef = doc(db, 'carts', String(tableNo));
-    if (items.length === 0) {
-      try {
-        await deleteDoc(cartRef);
-      } catch (err) {
-        console.warn('Error deleting cart doc:', err);
-      }
-    } else {
-      await setDoc(cartRef, {
-        tableNo,
-        items,
-        updatedAt: serverTimestamp()
-      });
+    if (tableNo === 0) return;
+    try {
+      const q = query(collection(db, 'tables'), where('tableNo', '==', tableNo));
+      const snapshot = await getDocs(q);
+      
+      const updatePromises = snapshot.docs.map(document => 
+        updateDoc(doc(db, 'tables', document.id), { 
+          cartItems: items,
+          status: items.length > 0 ? 'running' : 'available'
+        })
+      );
+      await Promise.all(updatePromises);
+    } catch (err) {
+      console.error("Error updating table cart in Firestore:", err);
     }
-  },
-
-  subscribeToCarts(onUpdate: (carts: Record<number, any[]>) => void): () => void {
-    const q = collection(db, 'carts');
-    return onSnapshot(q, (snapshot) => {
-      const cartsData: Record<number, any[]> = {};
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data && typeof data.tableNo === 'number') {
-          cartsData[data.tableNo] = data.items || [];
-        }
-      });
-      onUpdate(cartsData);
-    }, (error) => {
-      console.error("Error listening to carts:", error);
-    });
   }
 };

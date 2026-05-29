@@ -6,10 +6,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useOrderStore } from '../../store/order.store';
 import { DBServices } from '../../services/firebase/db';
 
+
 export const RunningOrdersScreen = () => {
   const navigation = useNavigation<any>();
   const { orders, isLoading, subscribeToOrders } = useOrderStore();
   const [searchQuery, setSearchQuery] = useState('');
+
 
   useEffect(() => {
     const unsubscribe = subscribeToOrders();
@@ -59,6 +61,8 @@ export const RunningOrdersScreen = () => {
     );
   };
 
+
+
   const renderOrder = ({ item: order }: { item: any }) => {
     return (
       <TouchableOpacity 
@@ -100,6 +104,8 @@ export const RunningOrdersScreen = () => {
           <View className="flex-row justify-between items-center mt-3 pt-1">
             <Text className="font-bold text-gray-800 text-base">Total: ₹{Number(order.totalAmount || 0).toFixed(2)}</Text>
           </View>
+
+
         </View>
       </TouchableOpacity>
     );
