@@ -1,4 +1,4 @@
-import { collection, addDoc, updateDoc, doc, setDoc, getDoc, serverTimestamp, deleteDoc, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, setDoc, getDoc, serverTimestamp, deleteDoc, query, where, getDocs, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from './config';
 import { Table } from '../../types/table.types';
 import { MenuCategory, MenuItem } from '../../types/menu.types';
@@ -32,6 +32,19 @@ export const DBServices = {
 
   async updateTableStatusByNo(tableNo: number | string, status: Table['status']): Promise<void> {
     const numericTableNo = Number(tableNo);
+    try {
+      const { useTableStore } = require('../../store/table.store');
+      const localTables = useTableStore.getState().tables;
+      const table = localTables.find((t: any) => t.tableNo === numericTableNo);
+      
+      if (table) {
+        await updateDoc(doc(db, 'tables', table.id), { status });
+        return;
+      }
+    } catch (e) {
+      console.warn("Local table lookup failed in updateTableStatusByNo:", e);
+    }
+
     const q = query(collection(db, 'tables'), where('tableNo', '==', numericTableNo));
     const snapshot = await getDocs(q);
     
@@ -106,6 +119,18 @@ export const DBServices = {
   async updateCart(tableNo: number, items: any[]): Promise<void> {
     if (tableNo === 0) return;
     try {
+      const { useTableStore } = require('../../store/table.store');
+      const localTables = useTableStore.getState().tables;
+      const table = localTables.find((t: any) => t.tableNo === tableNo);
+      
+      if (table) {
+        await updateDoc(doc(db, 'tables', table.id), { 
+          cartItems: items,
+          status: items.length > 0 ? 'running' : 'available'
+        });
+        return;
+      }
+
       const q = query(collection(db, 'tables'), where('tableNo', '==', tableNo));
       const snapshot = await getDocs(q);
       
@@ -119,5 +144,35 @@ export const DBServices = {
     } catch (err) {
       console.error("Error updating table cart in Firestore:", err);
     }
+  },
+
+  async addUser(userData: any): Promise<void> {
+    const userRef = doc(db, 'users', userData.mobile);
+    await setDoc(userRef, {
+      ...userData,
+      id: userData.mobile
+    });
+  },
+
+  async updateUser(id: string, updates: Partial<any>): Promise<void> {
+    const userRef = doc(db, 'users', id);
+    await updateDoc(userRef, updates);
+  },
+
+  async deleteUserAccount(id: string): Promise<void> {
+    await deleteDoc(doc(db, 'users', id));
+  },
+
+  subscribeToUsers(onUpdate: (users: any[]) => void): () => void {
+    const q = query(collection(db, 'users'), orderBy('name', 'asc'));
+    return onSnapshot(q, (snapshot) => {
+      const users: any[] = [];
+      snapshot.forEach((doc) => {
+        users.push({ ...doc.data(), id: doc.id });
+      });
+      onUpdate(users);
+    }, (error) => {
+      console.warn("Error fetching users:", error);
+    });
   }
 };

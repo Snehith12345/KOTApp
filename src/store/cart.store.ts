@@ -6,6 +6,21 @@ import { DBServices } from '../services/firebase/db';
 
 export type CartItem = Omit<OrderItem, 'id' | 'orderId'> & { sentQty?: number };
 
+const syncTimeouts: Record<number, any> = {};
+
+const debounceSyncCart = (tableNo: number, items: CartItem[]) => {
+  if (tableNo === 0) return;
+  if (syncTimeouts[tableNo]) {
+    clearTimeout(syncTimeouts[tableNo]);
+  }
+  syncTimeouts[tableNo] = setTimeout(() => {
+    DBServices.updateCart(tableNo, items).catch(err => 
+      console.error(`Failed to sync cart for Table ${tableNo} to Firestore:`, err)
+    );
+    delete syncTimeouts[tableNo];
+  }, 400);
+};
+
 interface CartState {
   carts: Record<number, CartItem[]>;
   setCarts: (carts: Record<number, CartItem[]>) => void;
@@ -40,7 +55,7 @@ export const useCartStore = create<CartState>()(
             [tableNo]: newItems
           }
         });
-        DBServices.updateCart(tableNo, newItems).catch(err => console.error("Failed to sync add item to Firestore:", err));
+        debounceSyncCart(tableNo, newItems);
       },
       removeItem: (tableNo, itemId) => {
         const currentCarts = get().carts;
@@ -52,7 +67,7 @@ export const useCartStore = create<CartState>()(
             [tableNo]: newItems
           }
         });
-        DBServices.updateCart(tableNo, newItems).catch(err => console.error("Failed to sync remove item to Firestore:", err));
+        debounceSyncCart(tableNo, newItems);
       },
       updateQuantity: (tableNo, itemId, qty) => {
         const currentCarts = get().carts;
@@ -64,7 +79,7 @@ export const useCartStore = create<CartState>()(
             [tableNo]: newItems
           }
         });
-        DBServices.updateCart(tableNo, newItems).catch(err => console.error("Failed to sync qty to Firestore:", err));
+        debounceSyncCart(tableNo, newItems);
       },
       updateNote: (tableNo, itemId, note) => {
         const currentCarts = get().carts;
@@ -76,7 +91,7 @@ export const useCartStore = create<CartState>()(
             [tableNo]: newItems
           }
         });
-        DBServices.updateCart(tableNo, newItems).catch(err => console.error("Failed to sync note to Firestore:", err));
+        debounceSyncCart(tableNo, newItems);
       },
       markAsSent: (tableNo) => {
         const currentCarts = get().carts;
@@ -88,6 +103,10 @@ export const useCartStore = create<CartState>()(
             [tableNo]: newItems
           }
         });
+        if (syncTimeouts[tableNo]) {
+          clearTimeout(syncTimeouts[tableNo]);
+          delete syncTimeouts[tableNo];
+        }
         DBServices.updateCart(tableNo, newItems).catch(err => console.error("Failed to sync markAsSent to Firestore:", err));
       },
       clearCart: (tableNo) => {
@@ -98,6 +117,10 @@ export const useCartStore = create<CartState>()(
             [tableNo]: []
           }
         });
+        if (syncTimeouts[tableNo]) {
+          clearTimeout(syncTimeouts[tableNo]);
+          delete syncTimeouts[tableNo];
+        }
         DBServices.updateCart(tableNo, []).catch(err => console.error("Failed to sync clearCart to Firestore:", err));
       },
     }),

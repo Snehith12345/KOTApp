@@ -6,6 +6,7 @@ import { CartScreen } from '../screens/cart/CartScreen';
 import { RunningOrdersScreen } from '../screens/orders/RunningOrdersScreen';
 import { PrinterSettingsScreen } from '../screens/settings/PrinterSettingsScreen';
 import { MenuManagementScreen } from '../screens/menu/MenuManagementScreen';
+import { UserManagementScreen } from '../screens/settings/UserManagementScreen';
 import { Routes } from '../constants/routes';
 import { useTableStore } from '../store/table.store';
 
@@ -27,6 +28,7 @@ export const AppNavigator = () => {
       <Stack.Screen name={Routes.CART} component={CartScreen} />
       <Stack.Screen name={Routes.ORDERS} component={RunningOrdersScreen} />
       <Stack.Screen name={Routes.SETTINGS} component={PrinterSettingsScreen} />
+      <Stack.Screen name={Routes.USER_MANAGEMENT} component={UserManagementScreen} />
     </Stack.Navigator>
   );
 };

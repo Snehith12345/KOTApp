@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Search } from 'lucide-react-native';
@@ -11,7 +11,8 @@ import { DBServices } from '../../services/firebase/db';
 import { printerService } from '../../services/printer/printer.service';
 import { ESCPOSService } from '../../services/printer/escpos.service';
 import { useAuthStore } from '../../store/auth.store';
-import { MenuItem } from '../../types/menu.types';
+import { MenuItem, MenuItemVariant } from '../../types/menu.types';
+import { Button } from '../../components/common/Button';
 
 export const MenuScreen = () => {
   const route = useRoute<any>();
@@ -33,6 +34,9 @@ export const MenuScreen = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [selectedItemForVariants, setSelectedItemForVariants] = useState<MenuItem | null>(null);
+  const [isVariantModalOpen, setVariantModalOpen] = useState(false);
+
   useEffect(() => {
     const unsubscribe = subscribeToMenu();
     return () => unsubscribe();
@@ -43,12 +47,28 @@ export const MenuScreen = () => {
     return item ? item.qty : 0;
   }, [cartItems]);
 
+  const getItemTotalCartQty = useCallback((item: MenuItem) => {
+    if (item.variants && item.variants.length > 0) {
+      return item.variants.reduce((sum, v) => sum + getCartQty(`${item.id}_${v.name}`), 0);
+    }
+    return getCartQty(item.id);
+  }, [getCartQty]);
+
+  const getItemSelectionDesc = useCallback((item: MenuItem) => {
+    if (!item.variants || item.variants.length === 0) return '';
+    const selected: string[] = [];
+    item.variants.forEach(v => {
+      const qty = getCartQty(`${item.id}_${v.name}`);
+      if (qty > 0) {
+        selected.push(`${qty}x ${v.name}`);
+      }
+    });
+    return selected.join(', ');
+  }, [getCartQty]);
+
   const handleIncrement = async (item: MenuItem) => {
     try {
       addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price, qty: 1 });
-      
-      // We removed the instant fire-and-forget printing per user request.
-      // Printing is now done collectively via the "SEND ORDER TO KITCHEN" button.
     } catch (error) {
       console.warn("Failed to increment item", error);
     }
@@ -67,6 +87,25 @@ export const MenuScreen = () => {
     }
   };
 
+  const handleIncrementVariant = (item: MenuItem, variant: MenuItemVariant) => {
+    addItem(tableNo, {
+      itemId: `${item.id}_${variant.name}`,
+      itemName: `${item.name} (${variant.name})`,
+      price: variant.price,
+      qty: 1
+    });
+  };
+
+  const handleDecrementVariant = (item: MenuItem, variant: MenuItemVariant) => {
+    const variantId = `${item.id}_${variant.name}`;
+    const qty = getCartQty(variantId);
+    if (qty > 1) {
+      updateQuantity(tableNo, variantId, qty - 1);
+    } else if (qty === 1) {
+      removeItem(tableNo, variantId);
+    }
+  };
+
   const cartTotal = Array.isArray(cartItems) 
     ? cartItems.reduce((sum, item) => sum + ((Number(item?.price) || 0) * (Number(item?.qty) || 0)), 0)
     : 0;
@@ -77,40 +116,89 @@ export const MenuScreen = () => {
 
   const renderItem = useCallback(({ item }: { item: MenuItem }) => {
     if (!item) return null;
-    const qty = getCartQty(item.id);
+    const hasVar = item.variants && item.variants.length > 0;
+    const totalQty = getItemTotalCartQty(item);
     const itemPrice = Number(item.price) || 0;
     
     return (
       <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-        <View className="flex-row items-center flex-1 pr-4">
-          <View className="w-12 h-12 bg-gray-200 rounded-full mr-3 items-center justify-center">
-            <Text className="text-xl">O</Text>
-          </View>
+        <TouchableOpacity 
+          className="flex-row items-center flex-1 pr-4"
+          activeOpacity={hasVar ? 0.7 : 1}
+          onPress={() => {
+            if (hasVar) {
+              setSelectedItemForVariants(item);
+              setVariantModalOpen(true);
+            }
+          }}
+        >
           <View className="flex-1">
             <Text className="font-bold text-gray-800 text-base" numberOfLines={2}>{item.name || 'Item'}</Text>
-            <Text className="text-gray-500">₹{itemPrice}</Text>
+            {hasVar ? (
+              <View>
+                <Text className="text-gray-400 text-xs mt-0.5">Options available</Text>
+                {totalQty > 0 && (
+                  <Text className="text-xs text-[#5D3FD3] mt-1 font-semibold" numberOfLines={2}>
+                    {getItemSelectionDesc(item)}
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <Text className="text-gray-500">₹{itemPrice}</Text>
+            )}
           </View>
-        </View>
-        <View className="flex-row items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
-          <TouchableOpacity 
-            className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm"
-            onPress={() => handleDecrement(item)}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          >
-            <Text className="text-xl text-gray-600">-</Text>
-          </TouchableOpacity>
-          <Text className="w-8 text-center font-bold">{qty}</Text>
-          <TouchableOpacity 
-            className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm"
-            onPress={() => handleIncrement(item)}
-            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          >
-            <Text className="text-xl text-white">+</Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+
+        {hasVar ? (
+          totalQty === 0 ? (
+            <TouchableOpacity 
+              className="bg-[#5D3FD3] px-4 py-2 rounded-lg"
+              onPress={() => {
+                setSelectedItemForVariants(item);
+                setVariantModalOpen(true);
+              }}
+            >
+              <Text className="text-white font-bold text-sm">+ Add</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              className="flex-row items-center bg-purple-50 rounded-lg p-1 border border-[#5D3FD3]"
+              onPress={() => {
+                setSelectedItemForVariants(item);
+                setVariantModalOpen(true);
+              }}
+            >
+              <View className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm">
+                <Text className="text-lg text-[#5D3FD3] font-bold">-</Text>
+              </View>
+              <Text className="w-8 text-center font-bold text-[#5D3FD3]">{totalQty}</Text>
+              <View className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm">
+                <Text className="text-lg text-white font-bold">+</Text>
+              </View>
+            </TouchableOpacity>
+          )
+        ) : (
+          <View className="flex-row items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+            <TouchableOpacity 
+              className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm"
+              onPress={() => handleDecrement(item)}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Text className="text-xl text-gray-600">-</Text>
+            </TouchableOpacity>
+            <Text className="w-8 text-center font-bold">{totalQty}</Text>
+            <TouchableOpacity 
+              className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm"
+              onPress={() => handleIncrement(item)}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <Text className="text-xl text-white">+</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
-  }, [cartItems, tableNo, getCartQty]);
+  }, [cartItems, tableNo, getCartQty, getItemTotalCartQty, getItemSelectionDesc]);
 
   const [isSendingToKitchen, setIsSendingToKitchen] = useState(false);
   const { user } = useAuthStore();
@@ -267,6 +355,56 @@ export const MenuScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Variant Selection Modal */}
+      <Modal visible={isVariantModalOpen} transparent animationType="slide">
+        <View className="flex-1 justify-center items-center bg-black/50 p-4">
+          <View className="bg-white p-6 rounded-2xl w-full max-w-[400px]">
+            <Text className="text-xl font-bold mb-1 text-gray-800">{selectedItemForVariants?.name}</Text>
+            <Text className="text-gray-400 text-xs mb-4">Select options to add to order</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} className="max-h-[300px] mb-4">
+              {selectedItemForVariants?.variants?.map((v, index) => {
+                const qty = getCartQty(`${selectedItemForVariants.id}_${v.name}`);
+                return (
+                  <View key={index} className="flex-row items-center justify-between py-3 border-b border-gray-100">
+                    <View className="flex-1 mr-4">
+                      <Text className="font-semibold text-gray-800 text-base">{v.name}</Text>
+                      <Text className="text-gray-500 text-sm">₹{v.price}</Text>
+                    </View>
+                    <View className="flex-row items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+                      <TouchableOpacity 
+                        className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm"
+                        onPress={() => handleDecrementVariant(selectedItemForVariants!, v)}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                      >
+                        <Text className="text-xl text-gray-600 font-bold">-</Text>
+                      </TouchableOpacity>
+                      <Text className="w-8 text-center font-bold text-gray-800">{qty}</Text>
+                      <TouchableOpacity 
+                        className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm"
+                        onPress={() => handleIncrementVariant(selectedItemForVariants!, v)}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                      >
+                        <Text className="text-xl text-white font-bold">+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+
+            <Button 
+              title="Done" 
+              onPress={() => {
+                setVariantModalOpen(false);
+                setSelectedItemForVariants(null);
+              }} 
+              className="w-full text-base"
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

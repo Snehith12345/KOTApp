@@ -9,11 +9,13 @@ import { Routes } from '../../constants/routes';
 import { Table } from '../../types/table.types';
 import { DBServices } from '../../services/firebase/db';
 import { HamburgerMenu } from '../../components/common/HamburgerMenu';
+import { useAuthStore } from '../../store/auth.store';
 
 export const TablesScreen = () => {
   const navigation = useNavigation<any>();
   const { tables, isLoading } = useTableStore();
   const carts = useCartStore(state => state.carts);
+  const { user } = useAuthStore();
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -33,19 +35,26 @@ export const TablesScreen = () => {
     }
   };
 
-  const getStatusColor = (status: Table['status']) => {
+  const getStatusClasses = (status: Table['status']) => {
     switch (status) {
-      case 'available': return 'border-green-500 text-green-500';
-      case 'running': return 'border-orange-500 text-orange-500';
-      default: return 'border-gray-500 text-gray-500';
-    }
-  };
-
-  const getStatusBg = (status: Table['status']) => {
-    switch (status) {
-      case 'available': return 'bg-green-50';
-      case 'running': return 'bg-orange-50';
-      default: return 'bg-gray-50';
+      case 'available': 
+        return {
+          bg: 'bg-emerald-50/30 border-emerald-100',
+          text: 'text-emerald-700',
+          dot: 'bg-emerald-500'
+        };
+      case 'running': 
+        return {
+          bg: 'bg-amber-50/30 border-amber-100',
+          text: 'text-amber-700',
+          dot: 'bg-amber-500'
+        };
+      default: 
+        return {
+          bg: 'bg-slate-50 border-slate-200',
+          text: 'text-slate-500',
+          dot: 'bg-slate-400'
+        };
     }
   };
 
@@ -75,20 +84,29 @@ export const TablesScreen = () => {
   const renderTable = useCallback(({ item }: { item: Table }) => {
     const hasItems = carts[item.tableNo] && carts[item.tableNo].length > 0;
     const displayStatus = hasItems ? 'running' : item.status;
+    const classes = getStatusClasses(displayStatus);
 
     return (
       <TouchableOpacity 
-        className={`w-[30%] aspect-square m-[1.5%] rounded-xl border-2 items-center justify-center ${getStatusColor(displayStatus)} ${getStatusBg(displayStatus)}`}
+        className={`w-[30%] aspect-square m-[1.5%] rounded-2xl border bg-white items-center justify-center shadow-sm relative ${classes.bg}`}
+        activeOpacity={0.8}
         onPress={() => {
           navigation.navigate(Routes.MENU, { tableId: item.id, tableNo: item.tableNo });
         }}
-        onLongPress={() => handleDeleteTable(item.id, item.tableNo)}
+        onLongPress={() => {
+          if (user?.role === 'admin' || user?.role === 'manager') {
+            handleDeleteTable(item.id, item.tableNo);
+          }
+        }}
       >
-        <Text className={`text-2xl font-bold ${getStatusColor(displayStatus).split(' ')[1]}`}>{item.tableNo}</Text>
-        <Text className={`text-xs mt-1 ${getStatusColor(displayStatus).split(' ')[1]}`}>{displayStatus}</Text>
+        <View className="absolute top-2.5 right-2.5 flex-row items-center">
+          <View className={`w-2.5 h-2.5 rounded-full ${classes.dot}`} />
+        </View>
+        <Text className="text-3xl font-black text-slate-800">{item.tableNo}</Text>
+        <Text className={`text-[10px] font-bold uppercase tracking-wider mt-1 ${classes.text}`}>{displayStatus}</Text>
       </TouchableOpacity>
     );
-  }, [carts]);
+  }, [carts, user, navigation]);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -103,9 +121,13 @@ export const TablesScreen = () => {
           <MenuIcon size={24} color="#000" />
         </TouchableOpacity>
         <Text className="text-xl font-bold">Tables</Text>
-        <TouchableOpacity onPress={handleAddTable} disabled={isAdding}>
-          {isAdding ? <ActivityIndicator size="small" color="#000" /> : <Plus size={24} color="#000" />}
-        </TouchableOpacity>
+        {(user?.role === 'admin' || user?.role === 'manager') ? (
+          <TouchableOpacity onPress={handleAddTable} disabled={isAdding}>
+            {isAdding ? <ActivityIndicator size="small" color="#000" /> : <Plus size={24} color="#000" />}
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
       </View>
 
       <View className="flex-1 p-4">

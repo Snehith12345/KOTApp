@@ -8,4 +8,5 @@ export const Routes = {
   CART: 'Cart',
   ORDERS: 'Orders',
   SETTINGS: 'Settings',
+  USER_MANAGEMENT: 'UserManagement',
 } as const;
