@@ -7,6 +7,17 @@ import { DBServices } from '../services/firebase/db';
 export type CartItem = Omit<OrderItem, 'id' | 'orderId'> & { sentQty?: number };
 
 const syncTimeouts: Record<number, any> = {};
+const lastLocalWriteTime: Record<number, number> = {};
+
+const recordLocalWrite = (tableNo: number) => {
+  lastLocalWriteTime[tableNo] = Date.now();
+};
+
+const shouldIgnoreFirestoreUpdate = (tableNo: number): boolean => {
+  const lastWrite = lastLocalWriteTime[tableNo] || 0;
+  // Ignore Firestore updates if we wrote locally within the last 2.5 seconds (2500ms)
+  return Date.now() - lastWrite < 2500;
+};
 
 const debounceSyncCart = (tableNo: number, items: CartItem[]) => {
   if (tableNo === 0) return;
@@ -38,8 +49,28 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       carts: {},
       getCart: (tableNo) => get().carts[tableNo] || [],
-      setCarts: (carts) => set({ carts }),
+      setCarts: (carts) => {
+        const currentCarts = get().carts;
+        const updatedCarts = { ...currentCarts };
+        let hasChanges = false;
+
+        Object.keys(carts).forEach((tableKey) => {
+          const tableNo = Number(tableKey);
+          if (!shouldIgnoreFirestoreUpdate(tableNo)) {
+            // Compare stringified versions to avoid redundant re-renders
+            if (JSON.stringify(currentCarts[tableNo] || []) !== JSON.stringify(carts[tableNo] || [])) {
+              updatedCarts[tableNo] = carts[tableNo];
+              hasChanges = true;
+            }
+          }
+        });
+
+        if (hasChanges) {
+          set({ carts: updatedCarts });
+        }
+      },
       addItem: (tableNo, item) => {
+        recordLocalWrite(tableNo);
         const currentCarts = get().carts;
         const tableCart = currentCarts[tableNo] || [];
         const existing = tableCart.find(i => i.itemId === item.itemId);
@@ -58,6 +89,7 @@ export const useCartStore = create<CartState>()(
         debounceSyncCart(tableNo, newItems);
       },
       removeItem: (tableNo, itemId) => {
+        recordLocalWrite(tableNo);
         const currentCarts = get().carts;
         const tableCart = currentCarts[tableNo] || [];
         const newItems = tableCart.filter(i => i.itemId !== itemId);
@@ -70,6 +102,7 @@ export const useCartStore = create<CartState>()(
         debounceSyncCart(tableNo, newItems);
       },
       updateQuantity: (tableNo, itemId, qty) => {
+        recordLocalWrite(tableNo);
         const currentCarts = get().carts;
         const tableCart = currentCarts[tableNo] || [];
         const newItems = tableCart.map(i => i.itemId === itemId ? { ...i, qty } : i);
@@ -82,6 +115,7 @@ export const useCartStore = create<CartState>()(
         debounceSyncCart(tableNo, newItems);
       },
       updateNote: (tableNo, itemId, note) => {
+        recordLocalWrite(tableNo);
         const currentCarts = get().carts;
         const tableCart = currentCarts[tableNo] || [];
         const newItems = tableCart.map(i => i.itemId === itemId ? { ...i, note } : i);
@@ -94,6 +128,7 @@ export const useCartStore = create<CartState>()(
         debounceSyncCart(tableNo, newItems);
       },
       markAsSent: (tableNo) => {
+        recordLocalWrite(tableNo);
         const currentCarts = get().carts;
         const tableCart = currentCarts[tableNo] || [];
         const newItems = tableCart.map(i => ({ ...i, sentQty: i.qty }));
@@ -110,6 +145,7 @@ export const useCartStore = create<CartState>()(
         DBServices.updateCart(tableNo, newItems).catch(err => console.error("Failed to sync markAsSent to Firestore:", err));
       },
       clearCart: (tableNo) => {
+        recordLocalWrite(tableNo);
         const currentCarts = get().carts;
         set({
           carts: {

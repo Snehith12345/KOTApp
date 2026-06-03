@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Utensils, User, Lock } from 'lucide-react-native';
+import { Utensils, User, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { useAuthStore } from '../../store/auth.store';
@@ -15,6 +15,7 @@ import { auth, db } from '../../services/firebase/config';
 export const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigation = useNavigation<any>();
   const { setUser, setLoading, isLoading } = useAuthStore();
 
@@ -110,10 +111,10 @@ export const LoginScreen = () => {
             placeholder="User ID / Email / Mobile"
             value={email}
             onChangeText={setEmail}
-            className="mb-4"
+            className="mb-2"
             autoCapitalize="none"
-            containerClassName="bg-slate-800/55 border border-slate-750/90 h-12"
-            textClassName="text-white text-sm"
+            containerClassName="bg-slate-800/55 border border-slate-750/90 py-3"
+            textClassName="text-white"
             placeholderTextColor="#64748B"
             leftIcon={<User size={18} color="#64748B" />}
           />
@@ -121,12 +122,24 @@ export const LoginScreen = () => {
             placeholder="Password"
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
-            className="mb-6"
-            containerClassName="bg-slate-800/55 border border-slate-750/90 h-12"
-            textClassName="text-white text-sm"
+            secureTextEntry={!showPassword}
+            className='mb-2'
+            containerClassName="bg-slate-800/55 border border-slate-750/90 py-3"
+            textClassName="text-white"
             placeholderTextColor="#64748B"
             leftIcon={<Lock size={18} color="#64748B" />}
+            rightIcon={
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              >
+                {showPassword ? (
+                  <Eye size={18} color="#64748B" />
+                ) : (
+                  <EyeOff size={18} color="#64748B" />
+                )}
+              </TouchableOpacity>
+            }
           />
 
           <View className="flex-row justify-between items-center mb-6">

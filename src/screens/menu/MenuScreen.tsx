@@ -14,6 +14,120 @@ import { useAuthStore } from '../../store/auth.store';
 import { MenuItem, MenuItemVariant } from '../../types/menu.types';
 import { Button } from '../../components/common/Button';
 
+// Memoized MenuItemRow component for high performance item list rendering
+const MenuItemRow = React.memo(({ 
+  item, 
+  tableNo,
+  onIncrement, 
+  onDecrement,
+  onOpenVariants
+}: { 
+  item: MenuItem;
+  tableNo: number;
+  onIncrement: (item: MenuItem) => void;
+  onDecrement: (item: MenuItem) => void;
+  onOpenVariants: () => void;
+}) => {
+  const hasVar = item.variants && item.variants.length > 0;
+  
+  // Select ONLY this item's quantity from the store to prevent unnecessary re-renders of other rows
+  const totalQty = useCartStore(useCallback((state) => {
+    const cartItems = state.carts[tableNo] || [];
+    if (hasVar && item.variants) {
+      return item.variants.reduce((sum, v) => {
+        const cartItem = cartItems.find(i => i.itemId === `${item.id}_${v.name}`);
+        return sum + (cartItem ? cartItem.qty : 0);
+      }, 0);
+    }
+    const cartItem = cartItems.find(i => i.itemId === item.id);
+    return cartItem ? cartItem.qty : 0;
+  }, [item.id, item.variants, hasVar, tableNo]));
+
+  // Select ONLY this item's variants description from the store
+  const selectionDesc = useCartStore(useCallback((state) => {
+    if (!hasVar || !item.variants) return '';
+    const cartItems = state.carts[tableNo] || [];
+    const selected: string[] = [];
+    item.variants.forEach(v => {
+      const cartItem = cartItems.find(i => i.itemId === `${item.id}_${v.name}`);
+      if (cartItem && cartItem.qty > 0) {
+        selected.push(`${cartItem.qty}x ${v.name}`);
+      }
+    });
+    return selected.join(', ');
+  }, [item.id, item.variants, hasVar, tableNo]));
+
+  const itemPrice = Number(item.price) || 0;
+
+  return (
+    <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
+      <TouchableOpacity 
+        className="flex-row items-center flex-1 pr-4"
+        activeOpacity={hasVar ? 0.7 : 1}
+        onPress={onOpenVariants}
+      >
+        <View className="flex-1">
+          <Text className="font-bold text-gray-800 text-base" numberOfLines={2}>{item.name || 'Item'}</Text>
+          {hasVar ? (
+            <View>
+              <Text className="text-gray-400 text-xs mt-0.5">Options available</Text>
+              {totalQty > 0 && (
+                <Text className="text-xs text-[#5D3FD3] mt-1 font-semibold" numberOfLines={2}>
+                  {selectionDesc}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <Text className="text-gray-500">₹{itemPrice}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      {hasVar ? (
+        totalQty === 0 ? (
+          <TouchableOpacity 
+            className="bg-[#5D3FD3] px-4 py-2 rounded-lg"
+            onPress={onOpenVariants}
+          >
+            <Text className="text-white font-bold text-sm">+ Add</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            className="flex-row items-center bg-purple-50 rounded-lg p-1 border border-[#5D3FD3]"
+            onPress={onOpenVariants}
+          >
+            <View className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm">
+              <Text className="text-lg text-[#5D3FD3] font-bold">-</Text>
+            </View>
+            <Text className="w-8 text-center font-bold text-[#5D3FD3]">{totalQty}</Text>
+            <View className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm">
+              <Text className="text-lg text-white font-bold">+</Text>
+            </View>
+          </TouchableOpacity>
+        )
+      ) : (
+        <View className="flex-row items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+          <TouchableOpacity 
+            className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm"
+            onPress={() => onDecrement(item)}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <Text className="text-xl text-gray-600">-</Text>
+          </TouchableOpacity>
+          <Text className="w-8 text-center font-bold">{totalQty}</Text>
+          <TouchableOpacity 
+            className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm"
+            onPress={() => onIncrement(item)}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <Text className="text-xl text-white">+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+});
+
 export const MenuScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -47,36 +161,19 @@ export const MenuScreen = () => {
     return item ? item.qty : 0;
   }, [cartItems]);
 
-  const getItemTotalCartQty = useCallback((item: MenuItem) => {
-    if (item.variants && item.variants.length > 0) {
-      return item.variants.reduce((sum, v) => sum + getCartQty(`${item.id}_${v.name}`), 0);
-    }
-    return getCartQty(item.id);
-  }, [getCartQty]);
-
-  const getItemSelectionDesc = useCallback((item: MenuItem) => {
-    if (!item.variants || item.variants.length === 0) return '';
-    const selected: string[] = [];
-    item.variants.forEach(v => {
-      const qty = getCartQty(`${item.id}_${v.name}`);
-      if (qty > 0) {
-        selected.push(`${qty}x ${v.name}`);
-      }
-    });
-    return selected.join(', ');
-  }, [getCartQty]);
-
-  const handleIncrement = async (item: MenuItem) => {
+  const handleIncrement = useCallback(async (item: MenuItem) => {
     try {
       addItem(tableNo, { itemId: item.id, itemName: item.name, price: item.price, qty: 1 });
     } catch (error) {
       console.warn("Failed to increment item", error);
     }
-  };
+  }, [tableNo, addItem]);
 
-  const handleDecrement = async (item: MenuItem) => {
+  const handleDecrement = useCallback(async (item: MenuItem) => {
     try {
-      const qty = getCartQty(item.id);
+      const cart = useCartStore.getState().carts[tableNo] || [];
+      const cartItem = cart.find(i => i.itemId === item.id);
+      const qty = cartItem ? cartItem.qty : 0;
       if (qty > 1) {
         updateQuantity(tableNo, item.id, qty - 1);
       } else if (qty === 1) {
@@ -85,26 +182,28 @@ export const MenuScreen = () => {
     } catch (error) {
       console.warn("Failed to decrement item", error);
     }
-  };
+  }, [tableNo, updateQuantity, removeItem]);
 
-  const handleIncrementVariant = (item: MenuItem, variant: MenuItemVariant) => {
+  const handleIncrementVariant = useCallback((item: MenuItem, variant: MenuItemVariant) => {
     addItem(tableNo, {
       itemId: `${item.id}_${variant.name}`,
       itemName: `${item.name} (${variant.name})`,
       price: variant.price,
       qty: 1
     });
-  };
+  }, [tableNo, addItem]);
 
-  const handleDecrementVariant = (item: MenuItem, variant: MenuItemVariant) => {
+  const handleDecrementVariant = useCallback((item: MenuItem, variant: MenuItemVariant) => {
     const variantId = `${item.id}_${variant.name}`;
-    const qty = getCartQty(variantId);
+    const cart = useCartStore.getState().carts[tableNo] || [];
+    const cartItem = cart.find(i => i.itemId === variantId);
+    const qty = cartItem ? cartItem.qty : 0;
     if (qty > 1) {
       updateQuantity(tableNo, variantId, qty - 1);
     } else if (qty === 1) {
       removeItem(tableNo, variantId);
     }
-  };
+  }, [tableNo, updateQuantity, removeItem]);
 
   const cartTotal = Array.isArray(cartItems) 
     ? cartItems.reduce((sum, item) => sum + ((Number(item?.price) || 0) * (Number(item?.qty) || 0)), 0)
@@ -116,89 +215,19 @@ export const MenuScreen = () => {
 
   const renderItem = useCallback(({ item }: { item: MenuItem }) => {
     if (!item) return null;
-    const hasVar = item.variants && item.variants.length > 0;
-    const totalQty = getItemTotalCartQty(item);
-    const itemPrice = Number(item.price) || 0;
-    
     return (
-      <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-        <TouchableOpacity 
-          className="flex-row items-center flex-1 pr-4"
-          activeOpacity={hasVar ? 0.7 : 1}
-          onPress={() => {
-            if (hasVar) {
-              setSelectedItemForVariants(item);
-              setVariantModalOpen(true);
-            }
-          }}
-        >
-          <View className="flex-1">
-            <Text className="font-bold text-gray-800 text-base" numberOfLines={2}>{item.name || 'Item'}</Text>
-            {hasVar ? (
-              <View>
-                <Text className="text-gray-400 text-xs mt-0.5">Options available</Text>
-                {totalQty > 0 && (
-                  <Text className="text-xs text-[#5D3FD3] mt-1 font-semibold" numberOfLines={2}>
-                    {getItemSelectionDesc(item)}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <Text className="text-gray-500">₹{itemPrice}</Text>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        {hasVar ? (
-          totalQty === 0 ? (
-            <TouchableOpacity 
-              className="bg-[#5D3FD3] px-4 py-2 rounded-lg"
-              onPress={() => {
-                setSelectedItemForVariants(item);
-                setVariantModalOpen(true);
-              }}
-            >
-              <Text className="text-white font-bold text-sm">+ Add</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              className="flex-row items-center bg-purple-50 rounded-lg p-1 border border-[#5D3FD3]"
-              onPress={() => {
-                setSelectedItemForVariants(item);
-                setVariantModalOpen(true);
-              }}
-            >
-              <View className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm">
-                <Text className="text-lg text-[#5D3FD3] font-bold">-</Text>
-              </View>
-              <Text className="w-8 text-center font-bold text-[#5D3FD3]">{totalQty}</Text>
-              <View className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm">
-                <Text className="text-lg text-white font-bold">+</Text>
-              </View>
-            </TouchableOpacity>
-          )
-        ) : (
-          <View className="flex-row items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
-            <TouchableOpacity 
-              className="w-8 h-8 items-center justify-center bg-white rounded shadow-sm"
-              onPress={() => handleDecrement(item)}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <Text className="text-xl text-gray-600">-</Text>
-            </TouchableOpacity>
-            <Text className="w-8 text-center font-bold">{totalQty}</Text>
-            <TouchableOpacity 
-              className="w-8 h-8 items-center justify-center bg-[#5D3FD3] rounded shadow-sm"
-              onPress={() => handleIncrement(item)}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <Text className="text-xl text-white">+</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      <MenuItemRow
+        item={item}
+        tableNo={tableNo}
+        onIncrement={handleIncrement}
+        onDecrement={handleDecrement}
+        onOpenVariants={() => {
+          setSelectedItemForVariants(item);
+          setVariantModalOpen(true);
+        }}
+      />
     );
-  }, [cartItems, tableNo, getCartQty, getItemTotalCartQty, getItemSelectionDesc]);
+  }, [tableNo, handleIncrement, handleDecrement]);
 
   const [isSendingToKitchen, setIsSendingToKitchen] = useState(false);
   const { user } = useAuthStore();
