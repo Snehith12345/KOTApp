@@ -52,6 +52,13 @@ export class ESCPOSService {
     return `${col1}${col2}${col3}`;
   }
 
+  private static pushSeparatorLine(buffer: number[]): void {
+    buffer.push(...this.BOLD_ON);
+    const lineStr = String.fromCharCode(196).repeat(40) + '\n';
+    buffer.push(...this.stringToBytes(lineStr));
+    buffer.push(...this.BOLD_OFF);
+  }
+
   static buildKOT(kotNo: number | string, tableNo: number, captainName: string, items: any[], specialNote?: string): Uint8Array {
     let buffer: number[] = [];
 
@@ -78,11 +85,11 @@ export class ESCPOSService {
     buffer.push(...this.BOLD_OFF);
 
     buffer.push(...this.ALIGN_LEFT);
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     // Items header (40 characters)
     buffer.push(...this.stringToBytes(this.formatKOTRow40('Item', 'Special Note', 'Qty.') + '\n'));
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     // Items
     items.forEach(item => {
@@ -100,11 +107,11 @@ export class ESCPOSService {
       }
     });
 
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     if (specialNote) {
       buffer.push(...this.stringToBytes(`Note: ${specialNote}\n`));
-      buffer.push(...this.stringToBytes('----------------------------------------\n'));
+      this.pushSeparatorLine(buffer);
     }
 
     // Feed and cut
@@ -136,9 +143,9 @@ export class ESCPOSService {
     buffer.push(...this.stringToBytes('GST NO : 36DLVPS528K1ZW\n'));
 
     buffer.push(...this.ALIGN_LEFT);
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
     buffer.push(...this.stringToBytes('Name:\n'));
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     const date = new Date();
     const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear().toString().slice(-2)}`;
@@ -160,9 +167,9 @@ export class ESCPOSService {
     let paddingSpaces2 = ''.padEnd(40 - leftCashier.length - rightBill.length, ' ');
     buffer.push(...this.stringToBytes(leftCashier + paddingSpaces2 + rightBill + '\n'));
 
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
     buffer.push(...this.stringToBytes(this.formatRow40('Item', 'Qty.', 'Price', 'Amount') + '\n'));
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     let grandTotal = 0;
     let totalQty = 0;
@@ -192,7 +199,7 @@ export class ESCPOSService {
       }
     });
 
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     const subTotalNum = grandTotal / 1.05;
     const subTotal = Math.round(subTotalNum * 100) / 100;
@@ -220,7 +227,7 @@ export class ESCPOSService {
     let sgstLine = sgstLabel.padStart(40 - sgstVal.length - 2, ' ') + '  ' + sgstVal;
     buffer.push(...this.stringToBytes(sgstLine + '\n'));
 
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
 
     if (roundOff !== 0) {
       let roundLabel = 'Round off';
@@ -236,7 +243,7 @@ export class ESCPOSService {
     buffer.push(...this.stringToBytes(grandLine + '\n'));
     buffer.push(...this.BOLD_OFF);
 
-    buffer.push(...this.stringToBytes('----------------------------------------\n'));
+    this.pushSeparatorLine(buffer);
     buffer.push(...this.ALIGN_CENTER);
     buffer.push(...this.stringToBytes('Thank You & Visit Again!!\n'));
 
